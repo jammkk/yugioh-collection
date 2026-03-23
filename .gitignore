@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Build output
+dist/
+backend/dist/
+
+# User uploads (photos)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Excel data (can contain personal info)
+backend/data/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+
+# Logs
+*.log
