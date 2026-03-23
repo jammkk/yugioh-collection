@@ -10,15 +10,30 @@ import {
 const BASE_URL = 'http://localhost:3000'
 
 const EDITION_OPTIONS = [
-  { value: 1, label: '1ra Edición' },
+  { value: 1, label: '1ra Ed.' },
   { value: 2, label: 'Ilimitada' },
   { value: null, label: 'No sé' },
 ]
 const CONDITION_OPTIONS = [
-  { value: 1, label: 'NM / LP', sub: 'Bien conservada' },
-  { value: 2, label: 'MP / HP', sub: 'Con desgaste' },
+  { value: 1, label: 'NM / LP', sub: 'Bien' },
+  { value: 2, label: 'MP / HP', sub: 'Usado' },
   { value: null, label: 'No sé', sub: '' },
 ]
+
+function OptionButton({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className="py-2.5 rounded-xl text-sm font-medium transition-all"
+      style={selected
+        ? { background: 'linear-gradient(135deg,#f5c842,#e8a613)', color: '#080d1a', border: '1px solid transparent' }
+        : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }
+      }
+    >
+      {children}
+    </button>
+  )
+}
 
 export default function CardDetail() {
   const { setCode = '', cardId = '' } = useParams()
@@ -74,8 +89,8 @@ export default function CardDetail() {
 
   if (isLoading || !card) {
     return (
-      <div className="min-h-screen bg-dark-800 flex items-center justify-center">
-        <div className="text-gold-500 animate-pulse">Cargando...</div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#080d1a' }}>
+        <div className="w-7 h-7 rounded-full border-2 border-gold-500 border-t-transparent animate-spin" />
       </div>
     )
   }
@@ -91,122 +106,117 @@ export default function CardDetail() {
       : null
 
   return (
-    <div className="min-h-screen bg-dark-800">
+    <div className="min-h-screen page-enter" style={{ background: '#080d1a' }}>
       {/* Header */}
-      <header className="bg-dark-900 border-b border-dark-600 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+      <header className="sticky top-0 z-20 glass-dark">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
           <Link
             to={`/sets/${setCode}`}
-            className="text-gold-500 hover:text-gold-400 transition-colors flex items-center gap-1 shrink-0"
+            className="flex items-center gap-1 text-sm font-medium shrink-0 transition-colors"
+            style={{ color: 'rgba(255,255,255,0.35)' }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#e8a613'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             {setCode}
           </Link>
-          <span className="text-dark-600">/</span>
-          <span className="text-gray-400 text-sm truncate">{card.name}</span>
+          <span style={{ color: 'rgba(255,255,255,0.12)' }}>/</span>
+          <span className="text-sm font-medium truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{card.name}</span>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
 
-        {/* Card image + photos */}
-        <div className="flex gap-4">
-          {/* Main image */}
-          <div className="relative w-36 shrink-0 rounded-xl overflow-hidden border-2 border-dark-600 bg-dark-900 aspect-[3/4]">
-            {mainImageSrc ? (
-              <img
-                src={mainImageSrc}
-                alt={card.name}
-                className="w-full h-full object-cover"
-                onError={() => setImgError(true)}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <span className="text-3xl">&#127183;</span>
+        {/* Hero: image + info */}
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(17,28,50,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="flex gap-0">
+            {/* Image column */}
+            <div className="relative w-36 shrink-0" style={{ background: '#05080f' }}>
+              <div className="aspect-[3/4]">
+                {mainImageSrc ? (
+                  <img src={mainImageSrc} alt={card.name} className="w-full h-full object-cover" onError={() => setImgError(true)} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-3xl opacity-20">&#127183;</span>
+                  </div>
+                )}
               </div>
-            )}
-            {photos.length > 1 && (
-              <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1">
-                {photos.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setPhotoIndex(i)}
-                    className={`w-1.5 h-1.5 rounded-full ${i === safeIndex ? 'bg-gold-500' : 'bg-gray-600'}`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Card info + photo actions */}
-          <div className="flex-1 min-w-0">
-            <div className="text-xs text-gold-500 font-mono mb-1">{card.cardCode}</div>
-            <h1 className="text-lg font-bold text-gray-100 leading-tight mb-1">{card.name}</h1>
-            <div className="text-xs text-gray-500 mb-3">{card.setName}</div>
-
-            {card.wikiUrl && (
-              <a
-                href={card.wikiUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gold-500 transition-colors mb-4"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-                Yugipedia
-              </a>
-            )}
-
-            {/* Photo navigation buttons */}
-            {photos.length > 1 && (
-              <div className="flex items-center gap-2 mb-2">
-                <button
-                  onClick={() => setPhotoIndex(i => Math.max(0, i - 1))}
-                  disabled={safeIndex === 0}
-                  className="text-gray-400 hover:text-white disabled:opacity-30 text-lg leading-none"
-                >&#8249;</button>
-                <span className="text-xs text-gray-500">{safeIndex + 1} / {photos.length}</span>
-                <button
-                  onClick={() => setPhotoIndex(i => Math.min(photos.length - 1, i + 1))}
-                  disabled={safeIndex === photos.length - 1}
-                  className="text-gray-400 hover:text-white disabled:opacity-30 text-lg leading-none"
-                >&#8250;</button>
-              </div>
-            )}
-
-            {/* Photo actions */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 text-xs bg-dark-700 border border-dark-600 hover:border-gold-500/50 text-gray-400 hover:text-gray-200 px-3 py-1.5 rounded-lg transition-all"
-              >
-                &#128247; {photos.length > 0 ? `Añadir foto (${photos.length})` : 'Subir foto'}
-              </button>
-              {currentPhoto && (
-                <button
-                  onClick={() => handleDeletePhoto(currentPhoto.id)}
-                  className="flex items-center gap-1.5 text-xs bg-dark-700 border border-dark-600 hover:border-red-500/50 text-gray-500 hover:text-red-400 px-3 py-1.5 rounded-lg transition-all"
-                >
-                  &#128465; Eliminar
-                </button>
+              {/* Photo dots */}
+              {photos.length > 1 && (
+                <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+                  {photos.map((_, i) => (
+                    <button key={i} onClick={() => setPhotoIndex(i)}
+                      className="w-1.5 h-1.5 rounded-full transition-colors"
+                      style={{ background: i === safeIndex ? '#e8a613' : 'rgba(255,255,255,0.3)' }} />
+                  ))}
+                </div>
               )}
             </div>
-            <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
+
+            {/* Info column */}
+            <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold font-mono text-gold-400 bg-gold-500/10 px-1.5 py-0.5 rounded-md">
+                    {card.cardCode}
+                  </span>
+                  {owned && <span className="text-xs font-bold px-1.5 py-0.5 rounded-md" style={{ background: 'rgba(232,166,19,0.15)', color: '#e8a613' }}>Tengo</span>}
+                </div>
+                <h1 className="text-base font-bold text-white leading-tight mb-1">{card.name}</h1>
+                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>{card.setName}</p>
+              </div>
+
+              <div className="space-y-2 mt-3">
+                {/* Photo nav */}
+                {photos.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setPhotoIndex(i => Math.max(0, i - 1))} disabled={safeIndex === 0}
+                      className="text-sm disabled:opacity-20 transition-opacity" style={{ color: 'rgba(255,255,255,0.5)' }}>&#8249;</button>
+                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>{safeIndex + 1}/{photos.length}</span>
+                    <button onClick={() => setPhotoIndex(i => Math.min(photos.length - 1, i + 1))} disabled={safeIndex === photos.length - 1}
+                      className="text-sm disabled:opacity-20 transition-opacity" style={{ color: 'rgba(255,255,255,0.5)' }}>&#8250;</button>
+                  </div>
+                )}
+
+                {/* Photo buttons */}
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}>
+                    &#128247; {photos.length > 0 ? `Foto (${photos.length})` : 'Subir foto'}
+                  </button>
+                  {currentPhoto && (
+                    <button onClick={() => handleDeletePhoto(currentPhoto.id)}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
+                      style={{ background: 'rgba(255,60,60,0.08)', border: '1px solid rgba(255,60,60,0.12)', color: 'rgba(255,100,100,0.7)' }}>
+                      &#128465;
+                    </button>
+                  )}
+                  {card.wikiUrl && (
+                    <a href={card.wikiUrl} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)' }}>
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      Wiki
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Photo thumbnails strip */}
+        {/* Photo thumbnails */}
         {photos.length > 1 && (
           <div className="flex gap-2 overflow-x-auto pb-1">
             {photos.map((p, i) => (
-              <button
-                key={p.id}
-                onClick={() => setPhotoIndex(i)}
-                className={`shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${i === safeIndex ? 'border-gold-500' : 'border-dark-600 opacity-60 hover:opacity-100'}`}
-              >
+              <button key={p.id} onClick={() => setPhotoIndex(i)}
+                className="shrink-0 w-14 h-14 rounded-xl overflow-hidden transition-all"
+                style={{ border: `2px solid ${i === safeIndex ? '#e8a613' : 'rgba(255,255,255,0.06)'}`, opacity: i === safeIndex ? 1 : 0.5 }}>
                 <img src={`${BASE_URL}${p.url}`} alt="" className="w-full h-full object-cover" />
               </button>
             ))}
@@ -214,112 +224,112 @@ export default function CardDetail() {
         )}
 
         {/* Collection form */}
-        <div className="bg-dark-700 rounded-2xl p-5 space-y-5">
+        <div className="rounded-2xl p-5 space-y-5" style={{ background: 'rgba(17,28,50,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+
           {/* Owned toggle */}
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-200">Tengo esta carta</span>
+            <div>
+              <div className="text-sm font-semibold text-white">Tengo esta carta</div>
+              <div className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                {owned ? 'En tu colección' : 'No la tienes aún'}
+              </div>
+            </div>
             <button
               onClick={() => setOwned(o => !o)}
-              className={`relative w-12 h-6 rounded-full overflow-hidden transition-colors ${owned ? 'bg-gold-500' : 'bg-dark-600'}`}
+              className="relative w-11 h-6 rounded-full transition-all duration-300"
+              style={{ background: owned ? 'linear-gradient(135deg,#f5c842,#e8a613)' : 'rgba(255,255,255,0.08)' }}
             >
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${owned ? 'translate-x-6' : 'translate-x-0.5'}`} />
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${owned ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </button>
           </div>
 
           {owned && (
             <>
+              <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+
               {/* Edition */}
               <div>
-                <label className="text-xs text-gray-400 uppercase tracking-wide mb-2 block">Edición</label>
+                <label className="text-xs font-semibold uppercase tracking-widest mb-3 block" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  Edición
+                </label>
                 <div className="grid grid-cols-3 gap-2">
                   {EDITION_OPTIONS.map(opt => (
-                    <button
-                      key={String(opt.value)}
-                      onClick={() => setEdition(opt.value)}
-                      className={`py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                        edition === opt.value
-                          ? 'bg-gold-500 text-dark-900 border-gold-500'
-                          : 'bg-dark-800 text-gray-400 border-dark-600 hover:border-gold-500/40 hover:text-gray-200'
-                      }`}
-                    >
+                    <OptionButton key={String(opt.value)} selected={edition === opt.value} onClick={() => setEdition(opt.value)}>
                       {opt.label}
-                    </button>
+                    </OptionButton>
                   ))}
                 </div>
               </div>
 
               {/* Condition */}
               <div>
-                <label className="text-xs text-gray-400 uppercase tracking-wide mb-2 block">Estado</label>
+                <label className="text-xs font-semibold uppercase tracking-widest mb-3 block" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  Estado
+                </label>
                 <div className="grid grid-cols-3 gap-2">
                   {CONDITION_OPTIONS.map(opt => (
-                    <button
-                      key={String(opt.value)}
-                      onClick={() => setCondition(opt.value)}
-                      className={`py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                        condition === opt.value
-                          ? 'bg-gold-500 text-dark-900 border-gold-500'
-                          : 'bg-dark-800 text-gray-400 border-dark-600 hover:border-gold-500/40 hover:text-gray-200'
-                      }`}
-                    >
+                    <OptionButton key={String(opt.value)} selected={condition === opt.value} onClick={() => setCondition(opt.value)}>
                       <div>{opt.label}</div>
-                      {opt.sub && <div className="text-xs opacity-60">{opt.sub}</div>}
-                    </button>
+                      {opt.sub && <div className="text-xs opacity-60 font-normal">{opt.sub}</div>}
+                    </OptionButton>
                   ))}
                 </div>
               </div>
 
               {/* Ultimate */}
               <div>
-                <label className="text-xs text-gray-400 uppercase tracking-wide mb-2 block">Rareza especial</label>
+                <label className="text-xs font-semibold uppercase tracking-widest mb-3 block" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  Rareza
+                </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: true, label: '✦ Ultimate Rare' },
-                    { value: false, label: 'Normal' },
-                  ].map(opt => (
-                    <button
-                      key={String(opt.value)}
-                      onClick={() => setIsUltimate(opt.value)}
-                      className={`py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                        isUltimate === opt.value
-                          ? 'bg-gold-500 text-dark-900 border-gold-500'
-                          : 'bg-dark-800 text-gray-400 border-dark-600 hover:border-gold-500/40 hover:text-gray-200'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                  <OptionButton selected={isUltimate} onClick={() => setIsUltimate(true)}>
+                    ✦ Ultimate Rare
+                  </OptionButton>
+                  <OptionButton selected={!isUltimate} onClick={() => setIsUltimate(false)}>
+                    Normal
+                  </OptionButton>
                 </div>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="text-xs text-gray-400 uppercase tracking-wide mb-2 block">Notas</label>
+                <label className="text-xs font-semibold uppercase tracking-widest mb-3 block" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  Notas
+                </label>
                 <textarea
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
                   placeholder="Ej: comprada en feria, firmada, sin holo..."
                   rows={3}
-                  className="w-full bg-dark-800 border border-dark-600 focus:border-gold-500/60 text-gray-200 placeholder-gray-600 rounded-xl px-3 py-2.5 text-sm resize-none outline-none transition-colors"
+                  className="w-full text-sm resize-none outline-none rounded-xl px-3.5 py-3 transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: 'rgba(255,255,255,0.8)',
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(232,166,19,0.3)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
                 />
               </div>
             </>
           )}
 
-          {/* Save button */}
+          {/* Save */}
           <button
             onClick={handleSave}
             disabled={updateCollection.isPending}
-            className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${
-              saved
-                ? 'bg-green-600 text-white'
-                : 'bg-gold-500 hover:bg-gold-400 text-dark-900'
-            } disabled:opacity-60`}
+            className="w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-50"
+            style={saved
+              ? { background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.2)' }
+              : { background: 'linear-gradient(135deg,#f5c842,#e8a613)', color: '#080d1a', border: 'none' }
+            }
           >
             {saved ? '✓ Guardado' : updateCollection.isPending ? 'Guardando...' : 'Guardar'}
           </button>
         </div>
       </main>
+
+      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
     </div>
   )
 }

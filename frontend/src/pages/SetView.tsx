@@ -7,6 +7,8 @@ import ProgressBar from '../components/ProgressBar'
 
 type Filter = 'all' | 'owned' | 'missing'
 
+const FILTER_LABELS: Record<Filter, string> = { all: 'Todas', owned: 'Tengo', missing: 'Faltan' }
+
 export default function SetView() {
   const { setCode = '' } = useParams()
   const [search, setSearch] = useState('')
@@ -23,7 +25,9 @@ export default function SetView() {
   const filtered = useMemo(() => {
     if (!cards) return []
     return cards.filter(c => {
-      const matchesSearch = search === '' || c.name.toLowerCase().includes(search.toLowerCase()) || c.cardCode.toLowerCase().includes(search.toLowerCase())
+      const matchesSearch = search === '' ||
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.cardCode.toLowerCase().includes(search.toLowerCase())
       const matchesFilter = filter === 'all' || (filter === 'owned' && c.owned) || (filter === 'missing' && !c.owned)
       return matchesSearch && matchesFilter
     })
@@ -34,61 +38,74 @@ export default function SetView() {
   const percentage = totalCount > 0 ? Math.round((ownedCount / totalCount) * 1000) / 10 : 0
 
   return (
-    <div className="min-h-screen bg-dark-800">
+    <div className="min-h-screen page-enter" style={{ background: '#080d1a' }}>
       {/* Header */}
-      <header className="bg-dark-900 border-b border-dark-600 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4 mb-3">
+      <header className="sticky top-0 z-20 glass-dark">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+          <div className="flex items-center gap-3 mb-3">
             <Link
               to="/"
-              className="text-gold-500 hover:text-gold-400 transition-colors flex items-center gap-1"
+              className="flex items-center gap-1.5 text-sm font-medium transition-colors shrink-0"
+              style={{ color: 'rgba(255,255,255,0.4)' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#e8a613'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.4)'}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Inicio
             </Link>
-            <div>
-              <h1 className="text-xl font-bold text-gold-500">
-                {setCode.toUpperCase()} — {currentSet?.name ?? '...'}
-              </h1>
+            <span style={{ color: 'rgba(255,255,255,0.15)' }}>/</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs font-bold font-mono text-gold-400 bg-gold-500/10 px-1.5 py-0.5 rounded-md shrink-0">
+                {setCode.toUpperCase()}
+              </span>
+              <h1 className="text-sm font-semibold text-white/70 truncate">{currentSet?.name ?? '...'}</h1>
             </div>
           </div>
-          <ProgressBar owned={ownedCount} total={totalCount} percentage={percentage} />
+          <ProgressBar owned={ownedCount} total={totalCount} percentage={percentage} size="sm" />
         </div>
       </header>
 
       {/* Controls */}
-      <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row gap-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-3 flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
           <SearchBar value={search} onChange={setSearch} />
         </div>
-        <div className="flex gap-2">
-          {(['all', 'owned', 'missing'] as Filter[]).map(f => (
+        <div className="flex gap-1.5 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          {(Object.keys(FILTER_LABELS) as Filter[]).map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`
-                px-3 py-2 rounded-lg text-sm font-medium transition-all
-                ${filter === f
-                  ? 'bg-gold-500 text-dark-900'
-                  : 'bg-dark-700 text-gray-400 hover:text-gray-200'
-                }
-              `}
+              className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={filter === f
+                ? { background: 'linear-gradient(135deg, #f5c842, #e8a613)', color: '#080d1a' }
+                : { color: 'rgba(255,255,255,0.45)' }
+              }
             >
-              {f === 'all' ? 'Todas' : f === 'owned' ? 'Tengo' : 'Falta'}
+              {FILTER_LABELS[f]}
+              {f !== 'all' && cards && (
+                <span className="ml-1 opacity-60">
+                  {f === 'owned' ? ownedCount : totalCount - ownedCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
       </div>
 
       {/* Cards */}
-      <main className="max-w-7xl mx-auto px-4 pb-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pb-10">
         {isLoading ? (
-          <div className="text-center py-16 text-gold-500 animate-pulse">Cargando cartas...</div>
+          <div className="flex flex-col items-center gap-3 py-20">
+            <div className="w-7 h-7 rounded-full border-2 border-gold-500 border-t-transparent animate-spin" />
+            <span className="text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>Cargando cartas...</span>
+          </div>
         ) : (
           <>
-            <div className="text-sm text-gray-500 mb-4">{filtered.length} cartas</div>
+            <p className="text-xs mb-4" style={{ color: 'rgba(255,255,255,0.25)' }}>
+              {filtered.length} {filtered.length === 1 ? 'carta' : 'cartas'}
+            </p>
             <CardGrid
               cards={filtered}
               setCode={setCode}
