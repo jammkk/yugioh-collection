@@ -27,9 +27,19 @@ async function runMigrations() {
   `
 
   await sql`
+    CREATE TABLE IF NOT EXISTS "users" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "email" varchar(255) NOT NULL UNIQUE,
+      "password_hash" varchar(255) NOT NULL,
+      "name" varchar(100) NOT NULL,
+      "created_at" timestamp NOT NULL DEFAULT now()
+    )
+  `
+
+  await sql`
     CREATE TABLE IF NOT EXISTS "collection" (
       "id" serial PRIMARY KEY NOT NULL,
-      "card_id" integer NOT NULL UNIQUE REFERENCES "cards"("id"),
+      "card_id" integer NOT NULL REFERENCES "cards"("id"),
       "owned" boolean NOT NULL DEFAULT false,
       "edition" smallint,
       "condition" smallint,
@@ -48,6 +58,41 @@ async function runMigrations() {
       "filename" varchar(255) NOT NULL,
       "created_at" timestamp NOT NULL DEFAULT now()
     )
+  `
+
+  // Auth migration: add user_id to collection and card_photos
+  // Insert a default user to own existing data
+  await sql`
+    INSERT INTO users (email, password_hash, name)
+    VALUES ('default@yugioh.local', 'PLACEHOLDER_NOT_USABLE', 'Default User')
+    ON CONFLICT (email) DO NOTHING
+  `
+
+  await sql`ALTER TABLE collection ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)`
+  await sql`
+    UPDATE collection
+    SET user_id = (SELECT id FROM users WHERE email = 'default@yugioh.local')
+    WHERE user_id IS NULL
+  `
+
+  // Drop old unique constraint on card_id and add composite unique (card_id, user_id)
+  await sql`ALTER TABLE collection DROP CONSTRAINT IF EXISTS collection_card_id_key`
+  await sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'collection_card_user_unique'
+      ) THEN
+        ALTER TABLE collection ADD CONSTRAINT collection_card_user_unique UNIQUE (card_id, user_id);
+      END IF;
+    END $$
+  `
+
+  await sql`ALTER TABLE card_photos ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)`
+  await sql`
+    UPDATE card_photos
+    SET user_id = (SELECT id FROM users WHERE email = 'default@yugioh.local')
+    WHERE user_id IS NULL
   `
 
   console.log('Migrations complete!')

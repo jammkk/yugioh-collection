@@ -1,6 +1,14 @@
 import { pgTable, serial, varchar, integer, boolean, smallint, timestamp } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+  name: varchar('name', { length: 100 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
 export const cardSets = pgTable('card_sets', {
   id: serial('id').primaryKey(),
   code: varchar('code', { length: 10 }).notNull().unique(),
@@ -19,7 +27,8 @@ export const cards = pgTable('cards', {
 
 export const collection = pgTable('collection', {
   id: serial('id').primaryKey(),
-  cardId: integer('card_id').notNull().references(() => cards.id).unique(),
+  cardId: integer('card_id').notNull().references(() => cards.id),
+  userId: integer('user_id').notNull().references(() => users.id),
   owned: boolean('owned').notNull().default(false),
   edition: smallint('edition'),
   condition: smallint('condition'),
@@ -30,9 +39,15 @@ export const collection = pgTable('collection', {
 export const cardPhotos = pgTable('card_photos', {
   id: serial('id').primaryKey(),
   cardId: integer('card_id').notNull().references(() => cards.id),
+  userId: integer('user_id').notNull().references(() => users.id),
   filename: varchar('filename', { length: 255 }).notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
+
+export const usersRelations = relations(users, ({ many }) => ({
+  collection: many(collection),
+  photos: many(cardPhotos),
+}))
 
 export const cardSetsRelations = relations(cardSets, ({ many }) => ({
   cards: many(cards),
@@ -40,14 +55,16 @@ export const cardSetsRelations = relations(cardSets, ({ many }) => ({
 
 export const cardsRelations = relations(cards, ({ one, many }) => ({
   cardSet: one(cardSets, { fields: [cards.setId], references: [cardSets.id] }),
-  collection: one(collection, { fields: [cards.id], references: [collection.cardId] }),
+  collection: many(collection),
   photos: many(cardPhotos),
 }))
 
 export const collectionRelations = relations(collection, ({ one }) => ({
   card: one(cards, { fields: [collection.cardId], references: [cards.id] }),
+  user: one(users, { fields: [collection.userId], references: [users.id] }),
 }))
 
 export const cardPhotosRelations = relations(cardPhotos, ({ one }) => ({
   card: one(cards, { fields: [cardPhotos.cardId], references: [cards.id] }),
+  user: one(users, { fields: [cardPhotos.userId], references: [users.id] }),
 }))
