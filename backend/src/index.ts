@@ -10,6 +10,7 @@ import { setsRoutes } from './routes/sets'
 import { cardsRoutes } from './routes/cards'
 import { photosRoutes } from './routes/photos'
 import { authRoutes } from './routes/auth'
+import { collectionsRoutes } from './routes/collections'
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -56,6 +57,7 @@ async function main() {
   })
 
   await fastify.register(authRoutes)
+  await fastify.register(collectionsRoutes)
   await fastify.register(setsRoutes)
   await fastify.register(cardsRoutes)
   await fastify.register(photosRoutes)

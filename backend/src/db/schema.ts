@@ -9,6 +9,13 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
+export const userCollections = pgTable('user_collections', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  name: varchar('name', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
 export const cardSets = pgTable('card_sets', {
   id: serial('id').primaryKey(),
   code: varchar('code', { length: 10 }).notNull().unique(),
@@ -48,6 +55,11 @@ export const cardPhotos = pgTable('card_photos', {
 export const usersRelations = relations(users, ({ many }) => ({
   collection: many(collection),
   photos: many(cardPhotos),
+  userCollections: many(userCollections),
+}))
+
+export const userCollectionsRelations = relations(userCollections, ({ one }) => ({
+  user: one(users, { fields: [userCollections.userId], references: [users.id] }),
 }))
 
 export const cardSetsRelations = relations(cardSets, ({ many }) => ({

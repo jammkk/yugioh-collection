@@ -1,11 +1,15 @@
-import { useStats } from '../hooks/useCards'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useStats, useCollection } from '../hooks/useCards'
 import { useAuth } from '../context/AuthContext'
 import SetSelector from '../components/SetSelector'
 import ProgressBar from '../components/ProgressBar'
 
 export default function Home() {
+  const { collectionId } = useParams<{ collectionId: string }>()
   const { user, logout } = useAuth()
   const { data: stats, isLoading, error } = useStats()
+  const { data: collection } = useCollection(Number(collectionId))
+  const navigate = useNavigate()
 
   if (isLoading) {
     return (
@@ -38,13 +42,24 @@ export default function Home() {
       <header className="sticky top-0 z-20 glass-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between py-4">
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-white">
-                GOAT <span className="text-gold-400">Tracker</span>
-              </h1>
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                {user?.name} · LOB → TLM
-              </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/')}
+                className="text-xs px-2 py-1.5 rounded-lg transition-all"
+                style={{ color: 'rgba(255,255,255,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'}
+              >
+                ← Volver
+              </button>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-white">
+                  {collection?.name ?? <span className="text-gold-400">Tracker</span>}
+                </h1>
+                <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  {user?.name}
+                </p>
+              </div>
             </div>
 
             {stats && (
@@ -121,7 +136,7 @@ export default function Home() {
           )}
         </div>
 
-        {stats?.sets && <SetSelector sets={stats.sets} />}
+        {stats?.sets && <SetSelector sets={stats.sets} collectionId={Number(collectionId)} />}
       </main>
     </div>
   )

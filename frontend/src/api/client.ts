@@ -49,6 +49,15 @@ export interface CardDetail extends Card {
   notes: string | null
 }
 
+export interface UserCollection {
+  id: number
+  name: string
+  createdAt: string
+  totalCards: number
+  ownedCards: number
+  percentage: number
+}
+
 export interface Stats {
   total_cards: number
   owned_cards: number
@@ -88,6 +97,10 @@ export const api = {
     }),
   logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
   me: () => request<{ user: User }>('/api/auth/me'),
+
+  // Collections
+  getCollections: () => request<UserCollection[]>('/api/collections'),
+  getCollection: (id: number) => request<UserCollection>(`/api/collections/${id}`),
 
   // Collection
   getCard: (cardId: number) => request<CardDetail>(`/api/cards/${cardId}`),

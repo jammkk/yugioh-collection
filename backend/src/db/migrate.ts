@@ -96,6 +96,25 @@ async function runMigrations() {
     WHERE user_id IS NULL
   `
 
+  // user_collections table
+  await sql`
+    CREATE TABLE IF NOT EXISTS "user_collections" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "user_id" integer NOT NULL REFERENCES "users"("id"),
+      "name" varchar(255) NOT NULL,
+      "created_at" timestamp NOT NULL DEFAULT now()
+    )
+  `
+
+  // Seed default collection "LOB-TLM GOAT" for jammkk (and any other existing user)
+  await sql`
+    INSERT INTO user_collections (user_id, name)
+    SELECT id, 'LOB-TLM GOAT'
+    FROM users
+    WHERE email != 'default@yugioh.local'
+    AND id NOT IN (SELECT user_id FROM user_collections)
+  `
+
   console.log('Migrations complete!')
   await sql.end()
   process.exit(0)

@@ -1,6 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 
+export function useCollections() {
+  return useQuery({
+    queryKey: ['collections'],
+    queryFn: api.getCollections,
+  })
+}
+
+export function useCollection(id: number) {
+  return useQuery({
+    queryKey: ['collections', id],
+    queryFn: () => api.getCollection(id),
+    enabled: !!id,
+  })
+}
+
 export function useCardDetail(cardId: number) {
   return useQuery({
     queryKey: ['cards', cardId],

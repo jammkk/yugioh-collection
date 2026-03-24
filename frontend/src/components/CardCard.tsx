@@ -7,6 +7,7 @@ const BASE_URL = 'http://localhost:3000'
 interface CardCardProps {
   card: Card
   setCode: string
+  collectionId: number
   onUpdateCollection: (data: { cardId: number; owned: boolean; edition: number | null; condition: number | null; isUltimate: boolean }) => void
   onUploadPhoto?: (cardId: number, file: File) => void
   onDeletePhoto?: (cardId: number, photoId: number) => void
@@ -15,7 +16,7 @@ interface CardCardProps {
 const EDITION_LABELS: Record<number, string> = { 1: '1ra Ed.', 2: 'Ilimitada' }
 const CONDITION_LABELS: Record<number, string> = { 1: 'NM/LP', 2: 'MP/HP' }
 
-export default function CardCard({ card, setCode, onUploadPhoto, onDeletePhoto }: CardCardProps) {
+export default function CardCard({ card, setCode, collectionId, onUploadPhoto, onDeletePhoto }: CardCardProps) {
   const navigate = useNavigate()
   const [imgError, setImgError] = useState(false)
   const [photoIndex, setPhotoIndex] = useState(0)
@@ -31,7 +32,7 @@ export default function CardCard({ card, setCode, onUploadPhoto, onDeletePhoto }
     e.target.value = ''
   }
 
-  const goToDetail = () => navigate(`/sets/${setCode}/cards/${card.id}`)
+  const goToDetail = () => navigate(`/collections/${collectionId}/sets/${setCode}/cards/${card.id}`)
 
   return (
     <div

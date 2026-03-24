@@ -45,7 +45,7 @@ function OptionButton({ selected, onClick, children }: { selected: boolean; onCl
 }
 
 export default function CardDetail() {
-  const { setCode = '', cardId = '' } = useParams()
+  const { setCode = '', cardId = '', collectionId = '' } = useParams()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const id = parseInt(cardId)
 
@@ -122,7 +122,7 @@ export default function CardDetail() {
       <header className="sticky top-0 z-20 glass-dark">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
           <Link
-            to={`/sets/${setCode}`}
+            to={`/collections/${collectionId}/sets/${setCode}`}
             className="flex items-center gap-1 text-sm font-medium shrink-0 transition-colors"
             style={{ color: 'rgba(255,255,255,0.35)' }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#e8a613'}
