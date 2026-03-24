@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
-import { userCollections, collection, cards, users } from '../db/schema'
+import { userCollections, collection, cards, cardSets, users } from '../db/schema'
 import { eq, sql, count } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import * as fs from 'fs'
@@ -29,31 +29,43 @@ export async function collectionsRoutes(fastify: FastifyInstance) {
       .where(eq(userCollections.userId, userId))
       .orderBy(userCollections.createdAt)
 
-    const totalCards = await db
-      .select({ total: count(cards.id) })
+    // Stats per collection: total cards via card_sets.collection_id
+    const totalPerCollection = await db
+      .select({ collectionId: cardSets.collectionId, total: count(cards.id) })
       .from(cards)
+      .innerJoin(cardSets, eq(cards.setId, cardSets.id))
+      .groupBy(cardSets.collectionId)
 
-    const ownedCards = await db
+    // Owned cards per collection (user-scoped)
+    const ownedPerCollection = await db
       .select({
+        collectionId: cardSets.collectionId,
         owned: sql<number>`CAST(SUM(CASE WHEN ${collection.owned} = true THEN 1 ELSE 0 END) AS INTEGER)`,
       })
       .from(collection)
+      .innerJoin(cards, eq(collection.cardId, cards.id))
+      .innerJoin(cardSets, eq(cards.setId, cardSets.id))
       .where(eq(collection.userId, userId))
+      .groupBy(cardSets.collectionId)
 
-    const total = totalCards[0]?.total ?? 0
-    const owned = ownedCards[0]?.owned ?? 0
-    const percentage = total > 0 ? Math.round((owned / total) * 1000) / 10 : 0
+    const totalMap = new Map(totalPerCollection.map(r => [r.collectionId, r.total]))
+    const ownedMap = new Map(ownedPerCollection.map(r => [r.collectionId, r.owned]))
 
-    return cols.map(c => ({
-      id: c.id,
-      name: c.name,
-      configured: c.configured,
-      coverImageUrl: c.coverImage ? `/uploads/${c.coverImage}` : null,
-      createdAt: c.createdAt,
-      totalCards: c.configured ? total : 0,
-      ownedCards: c.configured ? owned : 0,
-      percentage: c.configured ? percentage : 0,
-    }))
+    return cols.map(c => {
+      const total = totalMap.get(c.id) ?? 0
+      const owned = ownedMap.get(c.id) ?? 0
+      const percentage = total > 0 ? Math.round((owned / total) * 1000) / 10 : 0
+      return {
+        id: c.id,
+        name: c.name,
+        configured: c.configured,
+        coverImageUrl: c.coverImage ? `/uploads/${c.coverImage}` : null,
+        createdAt: c.createdAt,
+        totalCards: c.configured ? total : 0,
+        ownedCards: c.configured ? owned : 0,
+        percentage: c.configured ? percentage : 0,
+      }
+    })
   })
 
   // POST /api/collections
