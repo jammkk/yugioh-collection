@@ -108,6 +108,7 @@ async function runMigrations() {
 
   await sql`ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS configured BOOLEAN NOT NULL DEFAULT false`
   await sql`ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS cover_image VARCHAR(255)`
+  await sql`ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS view_mode VARCHAR(10) DEFAULT 'sets'`
 
   // Add collection_id to card_sets (links sets to a user collection)
   await sql`ALTER TABLE card_sets ADD COLUMN IF NOT EXISTS collection_id INTEGER REFERENCES user_collections(id)`

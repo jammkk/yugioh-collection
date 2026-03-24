@@ -15,6 +15,7 @@ export const userCollections = pgTable('user_collections', {
   name: varchar('name', { length: 255 }).notNull(),
   configured: boolean('configured').notNull().default(false),
   coverImage: varchar('cover_image', { length: 255 }),
+  viewMode: varchar('view_mode', { length: 10 }).default('sets'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 

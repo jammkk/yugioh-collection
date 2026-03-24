@@ -49,10 +49,15 @@ export interface CardDetail extends Card {
   notes: string | null
 }
 
+export interface CollectionCard extends Card {
+  setCode: string
+}
+
 export interface UserCollection {
   id: number
   name: string
   configured: boolean
+  viewMode: string
   coverImageUrl: string | null
   createdAt: string
   totalCards: number
@@ -103,6 +108,7 @@ export const api = {
   // Collections
   getCollections: () => request<UserCollection[]>('/api/collections'),
   getCollection: (id: number) => request<UserCollection>(`/api/collections/${id}`),
+  getCollectionAllCards: (id: number) => request<CollectionCard[]>(`/api/collections/${id}/all-cards`),
   createCollection: (name: string) => request<UserCollection>('/api/collections', {
     method: 'POST',
     body: JSON.stringify({ name }),

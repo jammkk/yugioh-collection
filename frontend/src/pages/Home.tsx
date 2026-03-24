@@ -1,14 +1,17 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { useStats, useCollection } from '../hooks/useCards'
+import { useStats, useCollection, useCollectionAllCards } from '../hooks/useCards'
 import { useAuth } from '../context/AuthContext'
 import SetSelector from '../components/SetSelector'
 import ProgressBar from '../components/ProgressBar'
+import CardCard from '../components/CardCard'
 
 export default function Home() {
   const { collectionId } = useParams<{ collectionId: string }>()
   const { user, logout } = useAuth()
   const { data: stats, isLoading, error } = useStats(Number(collectionId))
   const { data: collection } = useCollection(Number(collectionId))
+  const isCardsMode = collection?.viewMode === 'cards'
+  const { data: allCards } = useCollectionAllCards(isCardsMode ? Number(collectionId) : 0)
   const navigate = useNavigate()
 
   if (isLoading) {
@@ -137,16 +140,40 @@ export default function Home() {
               </div>
             )}
 
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                SETS · {stats?.sets?.length ?? 0}
-              </h2>
-              {complete > 0 && (
-                <span className="text-xs text-gold-400 font-medium">{complete} completo{complete !== 1 ? 's' : ''} ✦</span>
-              )}
-            </div>
-
-            {stats?.sets && <SetSelector sets={stats.sets} collectionId={Number(collectionId)} />}
+            {isCardsMode ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    CARTAS · {allCards?.length ?? 0}
+                  </h2>
+                </div>
+                {allCards && allCards.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                    {allCards.map(card => (
+                      <CardCard
+                        key={card.id}
+                        card={card}
+                        setCode={card.setCode}
+                        collectionId={Number(collectionId)}
+                        onUpdateCollection={() => {}}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    SETS · {stats?.sets?.length ?? 0}
+                  </h2>
+                  {complete > 0 && (
+                    <span className="text-xs text-gold-400 font-medium">{complete} completo{complete !== 1 ? 's' : ''} ✦</span>
+                  )}
+                </div>
+                {stats?.sets && <SetSelector sets={stats.sets} collectionId={Number(collectionId)} />}
+              </>
+            )}
 
             <div className="mt-10 flex justify-center">
               <button

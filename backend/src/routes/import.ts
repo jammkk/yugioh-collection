@@ -164,7 +164,9 @@ export async function importRoutes(fastify: FastifyInstance) {
       imported++
     }
 
-    await db.update(userCollections).set({ configured: true }).where(eq(userCollections.id, collectionId))
+    await db.update(userCollections)
+      .set({ configured: true, viewMode: 'sets' })
+      .where(eq(userCollections.id, collectionId))
 
     return { imported, notFound }
   })
@@ -219,7 +221,12 @@ export async function importRoutes(fastify: FastifyInstance) {
       await db.insert(collection).values({ cardId, userId, owned: false })
     }
 
-    await db.update(userCollections).set({ configured: true }).where(eq(userCollections.id, collectionId))
+    // Only set viewMode to 'cards' if collection hasn't been configured via Excel (keep 'sets' if already set)
+    if (col.viewMode !== 'sets') {
+      await db.update(userCollections).set({ configured: true, viewMode: 'cards' }).where(eq(userCollections.id, collectionId))
+    } else {
+      await db.update(userCollections).set({ configured: true }).where(eq(userCollections.id, collectionId))
+    }
 
     return reply.status(201).send({ cardId, setId })
   })

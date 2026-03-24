@@ -1,8 +1,8 @@
 import { FastifyInstance } from 'fastify'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
-import { userCollections, collection, cards, cardSets, users } from '../db/schema'
-import { eq, sql, count } from 'drizzle-orm'
+import { userCollections, collection, cards, cardSets, cardPhotos, users } from '../db/schema'
+import { eq, sql, count, and, inArray } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -174,6 +174,53 @@ export async function collectionsRoutes(fastify: FastifyInstance) {
     await db.update(userCollections).set({ coverImage: filename }).where(eq(userCollections.id, collectionId))
 
     return { coverImageUrl: `/uploads/${filename}` }
+  })
+
+  // GET /api/collections/:id/all-cards — flat card list for 'cards' viewMode
+  fastify.get<{ Params: { id: string } }>('/api/collections/:id/all-cards', {
+    preHandler: [fastify.authenticate],
+  }, async (request, reply) => {
+    const { id: userId } = request.user as { id: number; email: string }
+    const collectionId = parseInt(request.params.id)
+
+    const [col] = await db.select().from(userCollections).where(eq(userCollections.id, collectionId)).limit(1)
+    if (!col || col.userId !== userId) return reply.status(404).send({ error: 'Colección no encontrada' })
+
+    const rows = await db
+      .select({
+        id: cards.id,
+        name: cards.name,
+        cardCode: cards.cardCode,
+        wikiUrl: cards.wikiUrl,
+        passcode: cards.passcode,
+        setCode: cardSets.code,
+        owned: sql<boolean>`COALESCE(${collection.owned}, false)`,
+        edition: collection.edition,
+        condition: collection.condition,
+        isUltimate: sql<boolean>`COALESCE(${collection.isUltimate}, false)`,
+        language: collection.language,
+      })
+      .from(cards)
+      .innerJoin(cardSets, eq(cards.setId, cardSets.id))
+      .leftJoin(collection, and(eq(collection.cardId, cards.id), eq(collection.userId, userId)))
+      .where(eq(cardSets.collectionId, collectionId))
+      .orderBy(cardSets.orderIndex, cards.cardCode)
+
+    const cardIds = rows.map(r => r.id)
+    const photosMap = new Map<number, { id: number; url: string }[]>()
+    if (cardIds.length > 0) {
+      const photos = await db
+        .select()
+        .from(cardPhotos)
+        .where(and(inArray(cardPhotos.cardId, cardIds), eq(cardPhotos.userId, userId)))
+      for (const p of photos) {
+        const arr = photosMap.get(p.cardId) ?? []
+        arr.push({ id: p.id, url: `/uploads/${p.filename}` })
+        photosMap.set(p.cardId, arr)
+      }
+    }
+
+    return rows.map(r => ({ ...r, photos: photosMap.get(r.id) ?? [] }))
   })
 
   // DELETE /api/collections/:id

@@ -16,6 +16,14 @@ export function useCollection(id: number) {
   })
 }
 
+export function useCollectionAllCards(id: number) {
+  return useQuery({
+    queryKey: ['collections', id, 'all-cards'],
+    queryFn: () => api.getCollectionAllCards(id),
+    enabled: !!id,
+  })
+}
+
 export function useCreateCollection() {
   const queryClient = useQueryClient()
   return useMutation({
