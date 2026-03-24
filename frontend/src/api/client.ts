@@ -25,6 +25,7 @@ export interface Card {
   edition: number | null
   condition: number | null
   isUltimate: boolean
+  language: number | null
   photos: CardPhoto[]
 }
 
@@ -81,7 +82,7 @@ export const api = {
   getSetCards: (setCode: string) => request<Card[]>(`/api/sets/${setCode}/cards`),
   getStats: () => request<Stats>('/api/stats'),
   searchCards: (q: string) => request<Card[]>(`/api/cards/search?q=${encodeURIComponent(q)}`),
-  updateCollection: (cardId: number, data: Partial<Pick<Card, 'owned' | 'edition' | 'condition' | 'isUltimate'>> & { notes?: string | null }) =>
+  updateCollection: (cardId: number, data: Partial<Pick<Card, 'owned' | 'edition' | 'condition' | 'isUltimate' | 'language'>> & { notes?: string | null }) =>
     request(`/api/cards/${cardId}/collection`, {
       method: 'PATCH',
       body: JSON.stringify({
@@ -89,6 +90,7 @@ export const api = {
         edition: data.edition,
         condition: data.condition,
         is_ultimate: data.isUltimate,
+        language: data.language,
         notes: data.notes,
       }),
     }),

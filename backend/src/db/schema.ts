@@ -33,6 +33,7 @@ export const collection = pgTable('collection', {
   edition: smallint('edition'),
   condition: smallint('condition'),
   isUltimate: boolean('is_ultimate').notNull().default(false),
+  language: smallint('language'),
   notes: varchar('notes', { length: 1000 }),
 })
 
