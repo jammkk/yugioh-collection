@@ -212,7 +212,7 @@ export default function ConfigureCollection() {
                 className="w-full py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg,#f5c842,#e8a613)', color: '#080d1a' }}
               >
-                {importMutation.isPending ? 'Importando...' : '&#8679; Subir Excel'}
+                {importMutation.isPending ? 'Importando...' : '⇧ Subir Excel'}
               </button>
               <input ref={excelInputRef} type="file" accept=".xlsx,.xls" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) importMutation.mutate(f); e.target.value = '' }} />
