@@ -22,7 +22,10 @@ const CONDITION_OPTIONS = [
 const LANGUAGE_OPTIONS = [
   { value: 1, label: 'Español' },
   { value: 2, label: 'English' },
-  { value: 3, label: 'Japonés' },
+  { value: 3, label: 'Italiano' },
+  { value: 4, label: 'Français' },
+  { value: 5, label: 'Português' },
+  { value: 6, label: 'Deutsch' },
   { value: null, label: 'No sé' },
 ]
 
@@ -304,7 +307,7 @@ export default function CardDetail() {
                 <label className="text-xs font-semibold uppercase tracking-widest mb-3 block" style={{ color: 'rgba(255,255,255,0.3)' }}>
                   Idioma
                 </label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {LANGUAGE_OPTIONS.map(opt => (
                     <OptionButton key={String(opt.value)} selected={language === opt.value} onClick={() => setLanguage(opt.value)}>
                       {opt.label}
