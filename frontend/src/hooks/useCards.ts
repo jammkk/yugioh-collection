@@ -37,9 +37,9 @@ export function useUpdateCollection(setCode: string) {
 
   return useMutation({
     mutationFn: ({
-      cardId, owned, edition, condition, isUltimate, notes,
-    }: { cardId: number; owned: boolean; edition: number | null; condition: number | null; isUltimate: boolean; notes?: string | null }) =>
-      api.updateCollection(cardId, { owned, edition, condition, isUltimate, notes }),
+      cardId, owned, edition, condition, isUltimate, language, notes,
+    }: { cardId: number; owned: boolean; edition: number | null; condition: number | null; isUltimate: boolean; language?: number | null; notes?: string | null }) =>
+      api.updateCollection(cardId, { owned, edition, condition, isUltimate, language, notes }),
     onSettled: (_data, _err, vars) => {
       queryClient.invalidateQueries({ queryKey: ['cards', vars.cardId] })
       queryClient.invalidateQueries({ queryKey: ['sets', setCode, 'cards'] })
@@ -53,7 +53,7 @@ export function useUpdateCardDetail(cardId: number) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: { owned: boolean; edition: number | null; condition: number | null; isUltimate: boolean; notes?: string | null }) =>
+    mutationFn: (data: { owned: boolean; edition: number | null; condition: number | null; isUltimate: boolean; language?: number | null; notes?: string | null }) =>
       api.updateCollection(cardId, data),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['cards', cardId] })
