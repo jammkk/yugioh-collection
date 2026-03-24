@@ -1,5 +1,19 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
+const TOKEN_KEY = 'yugioh_token'
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token)
+}
+
+export function removeToken(): void {
+  localStorage.removeItem(TOKEN_KEY)
+}
+
 export interface CardSet {
   id: number
   code: string
@@ -49,11 +63,10 @@ export interface User {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    ...options,
-  })
+  const token = getToken()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${BASE_URL}${path}`, { headers, ...options })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw Object.assign(new Error(body.error || `HTTP ${res.status}`), { status: res.status })
@@ -64,12 +77,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   // Auth
   login: (email: string, password: string) =>
-    request<{ user: User }>('/api/auth/login', {
+    request<{ user: User; token: string }>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
   register: (email: string, password: string, name: string) =>
-    request<{ user: User }>('/api/auth/register', {
+    request<{ user: User; token: string }>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, password, name }),
     }),
@@ -95,20 +108,22 @@ export const api = {
       }),
     }),
   uploadPhoto: async (cardId: number, file: File): Promise<CardPhoto> => {
+    const token = getToken()
     const formData = new FormData()
     formData.append('photo', file)
     const res = await fetch(`${BASE_URL}/api/cards/${cardId}/photos`, {
       method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
-      credentials: 'include',
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
   },
   deletePhoto: async (cardId: number, photoId: number): Promise<void> => {
+    const token = getToken()
     const res = await fetch(`${BASE_URL}/api/cards/${cardId}/photos/${photoId}`, {
       method: 'DELETE',
-      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
   },

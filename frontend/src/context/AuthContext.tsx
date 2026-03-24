@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { api, User } from '../api/client'
+import { api, User, getToken, setToken, removeToken } from '../api/client'
 
 interface AuthContextValue {
   user: User | null
@@ -16,24 +16,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    if (!getToken()) {
+      setIsLoading(false)
+      return
+    }
     api.me()
       .then(({ user }) => setUser(user))
-      .catch(() => setUser(null))
+      .catch(() => { removeToken(); setUser(null) })
       .finally(() => setIsLoading(false))
   }, [])
 
   const login = async (email: string, password: string) => {
-    const { user } = await api.login(email, password)
+    const { user, token } = await api.login(email, password)
+    setToken(token)
     setUser(user)
   }
 
   const register = async (email: string, password: string, name: string) => {
-    const { user } = await api.register(email, password, name)
+    const { user, token } = await api.register(email, password, name)
+    setToken(token)
     setUser(user)
   }
 
   const logout = async () => {
     await api.logout()
+    removeToken()
     setUser(null)
   }
 
