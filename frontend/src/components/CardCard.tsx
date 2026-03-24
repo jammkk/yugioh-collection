@@ -50,10 +50,14 @@ export default function CardCard({ card, setCode, onUploadPhoto, onDeletePhoto }
       >
         {currentPhoto ? (
           <img src={`${BASE_URL}${currentPhoto.url}`} alt={card.name}
-            className="w-full h-full object-cover" loading="lazy" />
+            className="w-full h-full object-cover transition-all duration-300"
+            style={!card.owned ? { filter: 'grayscale(1) brightness(0.4)' } : undefined}
+            loading="lazy" />
         ) : card.passcode && !imgError ? (
           <img src={`https://images.ygoprodeck.com/images/cards_small/${card.passcode}.jpg`}
-            alt={card.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            alt={card.name}
+            className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
+            style={!card.owned ? { filter: 'grayscale(1) brightness(0.4)' } : undefined}
             loading="lazy" onError={() => setImgError(true)} />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-3">
@@ -121,10 +125,6 @@ export default function CardCard({ card, setCode, onUploadPhoto, onDeletePhoto }
           </div>
         )}
 
-        {/* Not owned dim overlay */}
-        {!card.owned && (
-          <div className="absolute inset-0 bg-surface-950/50 group-hover:bg-transparent transition-colors duration-200" />
-        )}
 
         <input ref={fileInputRef} type="file" accept="image/*" capture="environment"
           className="hidden" onChange={handleFileChange} />
