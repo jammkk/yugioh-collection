@@ -106,14 +106,49 @@ async function runMigrations() {
     )
   `
 
+  await sql`ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS configured BOOLEAN NOT NULL DEFAULT false`
+  await sql`ALTER TABLE user_collections ADD COLUMN IF NOT EXISTS cover_image VARCHAR(255)`
+
+  // Add collection_id to card_sets (links sets to a user collection)
+  await sql`ALTER TABLE card_sets ADD COLUMN IF NOT EXISTS collection_id INTEGER REFERENCES user_collections(id)`
+
+  // Remove old unique constraint on code alone (code+collection_id will be the new unique)
+  await sql`ALTER TABLE card_sets DROP CONSTRAINT IF EXISTS card_sets_code_key`
+  await sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'card_sets_code_collection_unique'
+      ) THEN
+        ALTER TABLE card_sets ADD CONSTRAINT card_sets_code_collection_unique UNIQUE (code, collection_id);
+      END IF;
+    END $$
+  `
+
+  // Assign existing GOAT sets to jammkk's LOB-TLM GOAT collection
+  await sql`
+    UPDATE card_sets
+    SET collection_id = (
+      SELECT uc.id FROM user_collections uc
+      JOIN users u ON u.id = uc.user_id
+      WHERE u.email = 'jammkk@gmail.com'
+      AND uc.name = 'LOB-TLM GOAT'
+      LIMIT 1
+    )
+    WHERE collection_id IS NULL
+  `
+
   // Seed default collection "LOB-TLM GOAT" for jammkk (and any other existing user)
   await sql`
-    INSERT INTO user_collections (user_id, name)
-    SELECT id, 'LOB-TLM GOAT'
+    INSERT INTO user_collections (user_id, name, configured)
+    SELECT id, 'LOB-TLM GOAT', true
     FROM users
     WHERE email != 'default@yugioh.local'
     AND id NOT IN (SELECT user_id FROM user_collections)
   `
+
+  // Mark any existing collections as configured (they were seeded with data)
+  await sql`UPDATE user_collections SET configured = true WHERE configured = false AND created_at < now() - interval '1 minute'`
 
   console.log('Migrations complete!')
   await sql.end()

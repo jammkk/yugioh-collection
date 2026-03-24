@@ -1,12 +1,27 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useCollections } from '../hooks/useCards'
+import { useCollections, useCreateCollection } from '../hooks/useCards'
 import { useAuth } from '../context/AuthContext'
 import ProgressBar from '../components/ProgressBar'
 
 export default function Collections() {
   const { user, logout } = useAuth()
   const { data: collections, isLoading, error } = useCollections()
+  const createCollection = useCreateCollection()
   const navigate = useNavigate()
+  const [showForm, setShowForm] = useState(false)
+  const [newName, setNewName] = useState('')
+
+  const handleCreate = () => {
+    if (!newName.trim()) return
+    createCollection.mutate(newName.trim(), {
+      onSuccess: (col) => {
+        setNewName('')
+        setShowForm(false)
+        navigate(`/collections/${col.id}`)
+      },
+    })
+  }
 
   if (isLoading) {
     return (
@@ -63,32 +78,89 @@ export default function Collections() {
           <h2 className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
             MIS COLECCIONES · {collections?.length ?? 0}
           </h2>
+          <button
+            onClick={() => setShowForm(v => !v)}
+            className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-all"
+            style={{ background: 'linear-gradient(135deg,#f5c842,#e8a613)', color: '#080d1a' }}
+          >
+            + Nueva
+          </button>
         </div>
+
+        {showForm && (
+          <div className="glass rounded-2xl p-4 mb-4 flex gap-2" style={{ border: '1px solid rgba(232,166,19,0.2)' }}>
+            <input
+              autoFocus
+              type="text"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') setShowForm(false) }}
+              placeholder="Nombre de la colección"
+              className="flex-1 text-sm bg-transparent outline-none text-white placeholder-white/25"
+            />
+            <button
+              onClick={handleCreate}
+              disabled={!newName.trim() || createCollection.isPending}
+              className="text-xs px-4 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-40"
+              style={{ background: 'linear-gradient(135deg,#f5c842,#e8a613)', color: '#080d1a' }}
+            >
+              {createCollection.isPending ? '...' : 'Crear'}
+            </button>
+            <button
+              onClick={() => { setShowForm(false); setNewName('') }}
+              className="text-xs px-3 py-1.5 rounded-lg transition-all"
+              style={{ color: 'rgba(255,255,255,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {collections?.map(col => (
             <button
               key={col.id}
               onClick={() => navigate(`/collections/${col.id}`)}
-              className="glass rounded-2xl p-5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
-              style={{ border: '1px solid rgba(255,255,255,0.06)' }}
+              className="group relative overflow-hidden rounded-2xl text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+              style={{ border: '1px solid rgba(255,255,255,0.06)', background: '#0d1425', minHeight: '325px' }}
             >
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="text-base font-bold text-white leading-tight">{col.name}</h3>
-                <span className="text-lg font-bold text-gold-400 ml-2 shrink-0">
-                  {Math.round(col.percentage)}%
-                </span>
-              </div>
+              {/* Cover image */}
+              {col.coverImageUrl && (
+                <>
+                  <img
+                    src={`http://localhost:3000${col.coverImageUrl}`}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    style={{ opacity: 0.25 }}
+                  />
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, #0d1425 30%, transparent)' }} />
+                </>
+              )}
 
-              <div className="mb-3">
-                <ProgressBar owned={col.ownedCards} total={col.totalCards} percentage={col.percentage} size="sm" />
-              </div>
+              {/* Content */}
+              <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '325px' }}>
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="text-base font-bold text-white leading-tight">{col.name}</h3>
+                  <span className="text-lg font-bold text-gold-400 ml-2 shrink-0">
+                    {col.configured ? `${Math.round(col.percentage)}%` : '—'}
+                  </span>
+                </div>
 
-              <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                  {col.ownedCards} / {col.totalCards} cartas
-                </span>
-                <span className="text-xs text-gold-400/60">Ver colección →</span>
+                {col.configured ? (
+                  <>
+                    <div className="mb-3">
+                      <ProgressBar owned={col.ownedCards} total={col.totalCards} percentage={col.percentage} size="sm" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                        {col.ownedCards} / {col.totalCards} cartas
+                      </span>
+                      <span className="text-xs text-gold-400/60">Ver colección →</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>Sin configurar</div>
+                )}
               </div>
             </button>
           ))}

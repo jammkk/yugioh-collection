@@ -13,14 +13,17 @@ export const userCollections = pgTable('user_collections', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').notNull().references(() => users.id),
   name: varchar('name', { length: 255 }).notNull(),
+  configured: boolean('configured').notNull().default(false),
+  coverImage: varchar('cover_image', { length: 255 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
 export const cardSets = pgTable('card_sets', {
   id: serial('id').primaryKey(),
-  code: varchar('code', { length: 10 }).notNull().unique(),
+  code: varchar('code', { length: 10 }).notNull(),
   name: varchar('name', { length: 255 }).notNull(),
   orderIndex: integer('order_index').notNull(),
+  collectionId: integer('collection_id').references(() => userCollections.id),
 })
 
 export const cards = pgTable('cards', {
@@ -58,12 +61,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   userCollections: many(userCollections),
 }))
 
-export const userCollectionsRelations = relations(userCollections, ({ one }) => ({
+export const userCollectionsRelations = relations(userCollections, ({ one, many }) => ({
   user: one(users, { fields: [userCollections.userId], references: [users.id] }),
+  cardSets: many(cardSets),
 }))
 
-export const cardSetsRelations = relations(cardSets, ({ many }) => ({
+export const cardSetsRelations = relations(cardSets, ({ many, one }) => ({
   cards: many(cards),
+  userCollection: one(userCollections, { fields: [cardSets.collectionId], references: [userCollections.id] }),
 }))
 
 export const cardsRelations = relations(cards, ({ one, many }) => ({

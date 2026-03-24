@@ -16,6 +16,37 @@ export function useCollection(id: number) {
   })
 }
 
+export function useCreateCollection() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => api.createCollection(name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
+    },
+  })
+}
+
+export function useDeleteCollection() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, password }: { id: number; password: string }) => api.deleteCollection(id, password),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
+    },
+  })
+}
+
+export function useUploadCollectionCover(collectionId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (file: File) => api.uploadCollectionCover(collectionId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
+      queryClient.invalidateQueries({ queryKey: ['collections', collectionId] })
+    },
+  })
+}
+
 export function useCardDetail(cardId: number) {
   return useQuery({
     queryKey: ['cards', cardId],
@@ -25,10 +56,10 @@ export function useCardDetail(cardId: number) {
 }
 
 
-export function useSets() {
+export function useSets(collectionId?: number) {
   return useQuery({
-    queryKey: ['sets'],
-    queryFn: api.getSets,
+    queryKey: ['sets', collectionId],
+    queryFn: () => api.getSets(collectionId),
   })
 }
 
@@ -40,10 +71,10 @@ export function useSetCards(setCode: string) {
   })
 }
 
-export function useStats() {
+export function useStats(collectionId?: number) {
   return useQuery({
-    queryKey: ['stats'],
-    queryFn: api.getStats,
+    queryKey: ['stats', collectionId],
+    queryFn: () => api.getStats(collectionId),
   })
 }
 
@@ -60,6 +91,7 @@ export function useUpdateCollection(setCode: string) {
       queryClient.invalidateQueries({ queryKey: ['sets', setCode, 'cards'] })
       queryClient.invalidateQueries({ queryKey: ['sets'] })
       queryClient.invalidateQueries({ queryKey: ['stats'] })
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
     },
   })
 }

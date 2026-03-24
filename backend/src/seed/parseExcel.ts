@@ -9,6 +9,7 @@ export interface CardRow {
   edition: number | null
   condition: number | null
   is_ultimate: boolean
+  language: number | null
 }
 
 export function parseExcel(filePath: string): CardRow[] {
@@ -31,6 +32,7 @@ export function parseExcel(filePath: string): CardRow[] {
         edition: row['first'] === 1 ? 1 : row['first'] === 2 ? 2 : null,
         condition: row['status'] === 1 ? 1 : row['status'] === 2 ? 2 : null,
         is_ultimate: row['ulti'] === 1,
+        language: typeof row['language'] === 'number' && row['language'] >= 1 && row['language'] <= 6 ? row['language'] : null,
       }
     })
 }
