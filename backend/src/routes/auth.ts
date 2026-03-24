@@ -10,10 +10,11 @@ export async function authRoutes(fastify: FastifyInstance) {
   const client = postgres(connectionString)
   const db = drizzle(client)
 
+  const isProd = process.env.NODE_ENV === 'production'
   const COOKIE_OPTS = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    secure: isProd,
+    sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
     path: '/',
     maxAge: 60 * 60 * 24 * 7, // 7 days
   }
