@@ -145,6 +145,26 @@ export async function collectionsRoutes(fastify: FastifyInstance) {
     return { ...cols[0], coverImageUrl: cols[0].coverImage ? `/uploads/${cols[0].coverImage}` : null }
   })
 
+  // PATCH /api/collections/:id — update viewMode or name
+  fastify.patch<{ Params: { id: string }; Body: { viewMode?: string } }>('/api/collections/:id', {
+    preHandler: [fastify.authenticate],
+  }, async (request, reply) => {
+    const { id: userId } = request.user as { id: number; email: string }
+    const collectionId = parseInt(request.params.id)
+    const { viewMode } = request.body
+
+    const [col] = await db.select().from(userCollections).where(eq(userCollections.id, collectionId)).limit(1)
+    if (!col || col.userId !== userId) return reply.status(404).send({ error: 'Colección no encontrada' })
+
+    const updates: Partial<typeof col> = {}
+    if (viewMode === 'sets' || viewMode === 'cards') updates.viewMode = viewMode
+
+    if (Object.keys(updates).length === 0) return reply.status(400).send({ error: 'Nada que actualizar' })
+
+    await db.update(userCollections).set(updates).where(eq(userCollections.id, collectionId))
+    return { ok: true }
+  })
+
   // POST /api/collections/:id/cover
   fastify.post<{ Params: { id: string } }>('/api/collections/:id/cover', {
     preHandler: [fastify.authenticate],

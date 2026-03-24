@@ -109,6 +109,8 @@ export const api = {
   getCollections: () => request<UserCollection[]>('/api/collections'),
   getCollection: (id: number) => request<UserCollection>(`/api/collections/${id}`),
   getCollectionAllCards: (id: number) => request<CollectionCard[]>(`/api/collections/${id}/all-cards`),
+  updateCollectionSettings: (id: number, data: { viewMode?: string }) =>
+    request<{ ok: boolean }>(`/api/collections/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   createCollection: (name: string) => request<UserCollection>('/api/collections', {
     method: 'POST',
     body: JSON.stringify({ name }),
