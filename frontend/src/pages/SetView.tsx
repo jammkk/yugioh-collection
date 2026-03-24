@@ -6,6 +6,8 @@ import SearchBar from '../components/SearchBar'
 import ProgressBar from '../components/ProgressBar'
 
 type Filter = 'all' | 'owned' | 'missing'
+type EditionFilter = 'all' | '1' | '2'
+type ConditionFilter = 'all' | '1' | '2'
 
 const FILTER_LABELS: Record<Filter, string> = { all: 'Todas', owned: 'Tengo', missing: 'Faltan' }
 
@@ -13,6 +15,8 @@ export default function SetView() {
   const { setCode = '' } = useParams()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
+  const [editionFilter, setEditionFilter] = useState<EditionFilter>('all')
+  const [conditionFilter, setConditionFilter] = useState<ConditionFilter>('all')
 
   const { data: cards, isLoading } = useSetCards(setCode)
   const { data: sets } = useSets()
@@ -29,9 +33,11 @@ export default function SetView() {
         c.name.toLowerCase().includes(search.toLowerCase()) ||
         c.cardCode.toLowerCase().includes(search.toLowerCase())
       const matchesFilter = filter === 'all' || (filter === 'owned' && c.owned) || (filter === 'missing' && !c.owned)
-      return matchesSearch && matchesFilter
+      const matchesEdition = editionFilter === 'all' || c.edition === parseInt(editionFilter)
+      const matchesCondition = conditionFilter === 'all' || c.condition === parseInt(conditionFilter)
+      return matchesSearch && matchesFilter && matchesEdition && matchesCondition
     })
-  }, [cards, search, filter])
+  }, [cards, search, filter, editionFilter, conditionFilter])
 
   const ownedCount = cards?.filter(c => c.owned).length ?? 0
   const totalCount = cards?.length ?? 0
@@ -68,27 +74,61 @@ export default function SetView() {
       </header>
 
       {/* Controls */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-3 flex flex-col sm:flex-row gap-3">
-        <div className="flex-1">
-          <SearchBar value={search} onChange={setSearch} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-3 flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <SearchBar value={search} onChange={setSearch} />
+          </div>
+          <div className="flex gap-1.5 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            {(Object.keys(FILTER_LABELS) as Filter[]).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                style={filter === f
+                  ? { background: 'linear-gradient(135deg, #f5c842, #e8a613)', color: '#080d1a' }
+                  : { color: 'rgba(255,255,255,0.45)' }
+                }
+              >
+                {FILTER_LABELS[f]}
+                {f !== 'all' && cards && (
+                  <span className="ml-1 opacity-60">
+                    {f === 'owned' ? ownedCount : totalCount - ownedCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-1.5 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          {(Object.keys(FILTER_LABELS) as Filter[]).map(f => (
+
+        {/* Secondary filters */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.2)' }}>Edición</span>
+          {([['all', 'Todas'], ['1', '1ra Ed.'], ['2', 'Ilimitada']] as [EditionFilter, string][]).map(([val, label]) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
-              style={filter === f
-                ? { background: 'linear-gradient(135deg, #f5c842, #e8a613)', color: '#080d1a' }
-                : { color: 'rgba(255,255,255,0.45)' }
+              key={val}
+              onClick={() => setEditionFilter(val)}
+              className="px-3 py-1 rounded-lg text-xs font-semibold transition-all"
+              style={editionFilter === val
+                ? { background: 'rgba(245,200,66,0.15)', color: '#f5c842', border: '1px solid rgba(245,200,66,0.3)' }
+                : { background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.06)' }
               }
             >
-              {FILTER_LABELS[f]}
-              {f !== 'all' && cards && (
-                <span className="ml-1 opacity-60">
-                  {f === 'owned' ? ownedCount : totalCount - ownedCount}
-                </span>
-              )}
+              {label}
+            </button>
+          ))}
+          <span className="text-xs font-semibold uppercase tracking-widest ml-2" style={{ color: 'rgba(255,255,255,0.2)' }}>Estado</span>
+          {([['all', 'Todos'], ['1', 'Bien'], ['2', 'Usado']] as [ConditionFilter, string][]).map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setConditionFilter(val)}
+              className="px-3 py-1 rounded-lg text-xs font-semibold transition-all"
+              style={conditionFilter === val
+                ? { background: 'rgba(245,200,66,0.15)', color: '#f5c842', border: '1px solid rgba(245,200,66,0.3)' }
+                : { background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.06)' }
+              }
+            >
+              {label}
             </button>
           ))}
         </div>
