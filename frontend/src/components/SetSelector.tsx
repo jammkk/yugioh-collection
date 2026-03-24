@@ -10,18 +10,18 @@ interface SetSelectorProps {
 const SET_COVER: Record<string, { passcode: number; name: string }> = {
   LOB: { passcode: 89631139, name: 'Blue-Eyes White Dragon' },
   MRD: { passcode: 11901678, name: 'Black Skull Dragon' },
-  SRL: { passcode: 63519819, name: 'Thousand-Eyes Restrict' },
-  PSV: { passcode: 77585513, name: 'Jinzo' },
-  LON: { passcode: 31829185, name: 'Dark Necrofear' },
-  LOD: { passcode: 71570244, name: 'Dark Ruler Ha Des' },
-  PGD: { passcode: 46986414, name: 'Mystical Knight of Jackal' },
-  MFC: { passcode: 38033121, name: 'Dark Magician Girl' },
-  DCR: { passcode: 56307359, name: 'Invader of Darkness' },
-  IOC: { passcode: 99518961, name: 'Chaos Emperor Dragon' },
-  AST: { passcode: 68007326, name: 'Guardian Angel Joan' },
+  SRL: { passcode: 64631466, name: 'Relinquished' },
+  PSV: { passcode: 63519819, name: 'Thousand-Eyes Restrict' },
+  LON: { passcode: 29549364, name: 'Mask of Restrict' },
+  LOD: { passcode: 28566710, name: 'Last Turn' },
+  PGD: { passcode: 76052811, name: 'Helpoemer' },
+  MFC: { passcode: 98502113, name: 'Dark Paladin' },
+  DCR: { passcode: 12600382, name: 'Exodia Necross' },
+  IOC: { passcode: 40737112, name: 'Dark Magician of Chaos' },
+  AST: { passcode: 18378582, name: 'Archlord Zerato' },
   SOD: { passcode: 47569030, name: 'Horus the Black Flame Dragon LV8' },
-  RDS: { passcode: 59793705, name: 'Elemental HERO Bladedge' },
-  FET: { passcode: 35809262, name: 'Elemental HERO Flame Wingman' },
+  RDS: { passcode: 61505339, name: 'The Creator' },
+  FET: { passcode: 41436536, name: 'Elemental HERO Phoenix Enforcer' },
   TLM: { passcode: 83104731, name: 'Ancient Gear Golem' },
 }
 
@@ -39,55 +39,57 @@ export default function SetSelector({ sets }: SetSelectorProps) {
           <Link
             key={set.code}
             to={`/sets/${set.code}`}
-            className="group relative block rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5"
+            className="group relative flex overflow-hidden rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
             style={{
               border: `1px solid ${complete ? 'rgba(232,166,19,0.3)' : 'rgba(255,255,255,0.06)'}`,
               boxShadow: complete ? '0 0 20px rgba(232,166,19,0.1)' : undefined,
               background: '#0d1425',
+              minHeight: '100px',
             }}
           >
-            {/* Cover card image (right side, faded) */}
+            {/* Left: set info */}
+            <div className="relative flex-1 p-4 flex flex-col justify-between min-w-0 z-10">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xs font-bold font-mono text-gold-400 bg-gold-500/10 px-1.5 py-0.5 rounded-md">
+                    {set.code}
+                  </span>
+                  {complete && <span className="text-gold-400 text-xs">✦</span>}
+                </div>
+                <h3 className="text-sm font-medium leading-tight text-white/80 group-hover:text-white transition-colors line-clamp-2">
+                  {set.name}
+                </h3>
+              </div>
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs tabular-nums"
+                    style={{ color: complete ? '#e8a613' : 'rgba(255,255,255,0.3)' }}>
+                    {set.ownedCards}/{set.totalCards}
+                  </span>
+                </div>
+                <ProgressBar
+                  owned={set.ownedCards}
+                  total={set.totalCards}
+                  percentage={set.percentage}
+                  size="sm"
+                />
+              </div>
+            </div>
+
+            {/* Right: cover card image */}
             {imgUrl && (
-              <div className="absolute inset-0 flex justify-end overflow-hidden rounded-2xl">
+              <div className="relative shrink-0 w-20 overflow-hidden">
+                {/* gradient fade from left */}
+                <div className="absolute inset-0 z-10"
+                  style={{ background: 'linear-gradient(to right, #0d1425 0%, transparent 40%)' }} />
                 <img
                   src={imgUrl}
                   alt={cover?.name}
-                  className="h-full w-auto object-cover opacity-20 group-hover:opacity-30 transition-opacity duration-300"
-                  style={{ maskImage: 'linear-gradient(to left, rgba(0,0,0,0.8) 0%, transparent 70%)', WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,0.8) 0%, transparent 70%)' }}
+                  className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                  style={{ opacity: 0.85 }}
                 />
               </div>
             )}
-
-            {/* Gradient overlay to ensure text readability */}
-            <div className="absolute inset-0 rounded-2xl"
-              style={{ background: 'linear-gradient(to right, #0d1425 55%, transparent 100%)' }} />
-
-            {/* Content */}
-            <div className="relative p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-xs font-bold font-mono text-gold-400 bg-gold-500/10 px-1.5 py-0.5 rounded-md">
-                      {set.code}
-                    </span>
-                    {complete && <span className="text-gold-400 text-xs">✦</span>}
-                  </div>
-                  <h3 className="text-sm font-medium leading-tight text-white/80 group-hover:text-white transition-colors line-clamp-2 pr-8">
-                    {set.name}
-                  </h3>
-                </div>
-                <span className="text-xs font-bold shrink-0 ml-2 tabular-nums"
-                  style={{ color: complete ? '#e8a613' : 'rgba(255,255,255,0.3)' }}>
-                  {set.ownedCards}/{set.totalCards}
-                </span>
-              </div>
-              <ProgressBar
-                owned={set.ownedCards}
-                total={set.totalCards}
-                percentage={set.percentage}
-                size="sm"
-              />
-            </div>
           </Link>
         )
       })}
