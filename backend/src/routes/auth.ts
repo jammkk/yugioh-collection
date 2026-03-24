@@ -10,15 +10,6 @@ export async function authRoutes(fastify: FastifyInstance) {
   const client = postgres(connectionString)
   const db = drizzle(client)
 
-  const isProd = process.env.NODE_ENV === 'production'
-  const COOKIE_OPTS = {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  }
-
   // POST /api/auth/register
   fastify.post<{
     Body: { email: string; password: string; name: string }
@@ -45,9 +36,7 @@ export async function authRoutes(fastify: FastifyInstance) {
     }).returning({ id: users.id, email: users.email, name: users.name })
 
     const token = fastify.jwt.sign({ id: user.id, email: user.email })
-    reply.setCookie('token', token, COOKIE_OPTS)
-
-    return { user: { id: user.id, email: user.email, name: user.name } }
+    return { user: { id: user.id, email: user.email, name: user.name }, token }
   })
 
   // POST /api/auth/login
@@ -67,14 +56,11 @@ export async function authRoutes(fastify: FastifyInstance) {
     }
 
     const token = fastify.jwt.sign({ id: user.id, email: user.email })
-    reply.setCookie('token', token, COOKIE_OPTS)
-
-    return { user: { id: user.id, email: user.email, name: user.name } }
+    return { user: { id: user.id, email: user.email, name: user.name }, token }
   })
 
   // POST /api/auth/logout
-  fastify.post('/api/auth/logout', async (_request, reply) => {
-    reply.clearCookie('token', { path: '/' })
+  fastify.post('/api/auth/logout', async () => {
     return { ok: true }
   })
 

@@ -40,10 +40,6 @@ async function main() {
   await fastify.register(fastifyCookie)
   await fastify.register(fastifyJwt, {
     secret: process.env.JWT_SECRET || 'yugioh-jwt-dev-secret-2024',
-    cookie: {
-      cookieName: 'token',
-      signed: false,
-    },
   })
 
   fastify.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {

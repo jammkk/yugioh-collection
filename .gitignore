@@ -23,3 +23,5 @@ backend/data/
 
 # Logs
 *.log
+backup.sql
+backup.sql
