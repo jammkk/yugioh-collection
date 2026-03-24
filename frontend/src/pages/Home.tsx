@@ -1,8 +1,10 @@
 import { useStats } from '../hooks/useCards'
+import { useAuth } from '../context/AuthContext'
 import SetSelector from '../components/SetSelector'
 import ProgressBar from '../components/ProgressBar'
 
 export default function Home() {
+  const { user, logout } = useAuth()
   const { data: stats, isLoading, error } = useStats()
 
   if (isLoading) {
@@ -40,7 +42,9 @@ export default function Home() {
               <h1 className="text-xl font-bold tracking-tight text-white">
                 GOAT <span className="text-gold-400">Tracker</span>
               </h1>
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Yu-Gi-Oh! · LOB → TLM</p>
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                {user?.name} · LOB → TLM
+              </p>
             </div>
 
             {stats && (
@@ -49,6 +53,16 @@ export default function Home() {
                   <div className="text-xs font-medium text-gold-400">{stats.owned_cards} cartas</div>
                   <div className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>de {stats.total_cards}</div>
                 </div>
+                {/* Logout */}
+                <button
+                  onClick={logout}
+                  className="text-xs px-3 py-1.5 rounded-lg transition-all"
+                  style={{ color: 'rgba(255,255,255,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'}
+                >
+                  Salir
+                </button>
                 {/* Circular progress indicator */}
                 <div className="relative w-11 h-11">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">

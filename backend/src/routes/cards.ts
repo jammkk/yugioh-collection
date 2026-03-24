@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { cardSets, cards, collection, cardPhotos } from '../db/schema'
-import { eq, sql, ilike, count } from 'drizzle-orm'
+import { eq, sql, ilike, count, and } from 'drizzle-orm'
 
 export async function cardsRoutes(fastify: FastifyInstance) {
   const connectionString = process.env.DATABASE_URL || 'postgresql://yugioh:yugioh@localhost:5434/collection'
@@ -13,13 +13,18 @@ export async function cardsRoutes(fastify: FastifyInstance) {
   fastify.patch<{
     Params: { cardId: string }
     Body: { owned?: boolean; edition?: number | null; condition?: number | null; is_ultimate?: boolean; notes?: string | null }
-  }>('/api/cards/:cardId/collection', async (request, reply) => {
+  }>('/api/cards/:cardId/collection', {
+    preHandler: [fastify.authenticate],
+  }, async (request, reply) => {
     const cardId = parseInt(request.params.cardId)
     if (isNaN(cardId)) return reply.status(400).send({ error: 'Invalid card ID' })
 
+    const { id: userId } = request.user as { id: number; email: string }
     const { owned, edition, condition, is_ultimate, notes } = request.body
 
-    const existing = await db.select().from(collection).where(eq(collection.cardId, cardId)).limit(1)
+    const existing = await db.select().from(collection)
+      .where(and(eq(collection.cardId, cardId), eq(collection.userId, userId)))
+      .limit(1)
 
     if (existing.length) {
       await db.update(collection)
@@ -30,10 +35,11 @@ export async function cardsRoutes(fastify: FastifyInstance) {
           ...(is_ultimate !== undefined && { isUltimate: is_ultimate }),
           ...(notes !== undefined && { notes }),
         })
-        .where(eq(collection.cardId, cardId))
+        .where(and(eq(collection.cardId, cardId), eq(collection.userId, userId)))
     } else {
       await db.insert(collection).values({
         cardId,
+        userId,
         owned: owned ?? false,
         edition: edition ?? null,
         condition: condition ?? null,
@@ -42,14 +48,20 @@ export async function cardsRoutes(fastify: FastifyInstance) {
       })
     }
 
-    const updated = await db.select().from(collection).where(eq(collection.cardId, cardId)).limit(1)
-    return updated[0]
+    const [updated] = await db.select().from(collection)
+      .where(and(eq(collection.cardId, cardId), eq(collection.userId, userId)))
+      .limit(1)
+    return updated
   })
 
   // GET /api/cards/search?q=
-  fastify.get<{ Querystring: { q?: string } }>('/api/cards/search', async (request, _reply) => {
+  fastify.get<{ Querystring: { q?: string } }>('/api/cards/search', {
+    preHandler: [fastify.authenticate],
+  }, async (request, _reply) => {
     const q = request.query.q || ''
     if (!q.trim()) return []
+
+    const { id: userId } = request.user as { id: number; email: string }
 
     const result = await db
       .select({
@@ -67,7 +79,7 @@ export async function cardsRoutes(fastify: FastifyInstance) {
       })
       .from(cards)
       .leftJoin(cardSets, eq(cards.setId, cardSets.id))
-      .leftJoin(collection, eq(collection.cardId, cards.id))
+      .leftJoin(collection, and(eq(collection.cardId, cards.id), eq(collection.userId, userId)))
       .where(ilike(cards.name, `%${q}%`))
       .limit(50)
 
@@ -75,9 +87,13 @@ export async function cardsRoutes(fastify: FastifyInstance) {
   })
 
   // GET /api/cards/:cardId
-  fastify.get<{ Params: { cardId: string } }>('/api/cards/:cardId', async (request, reply) => {
+  fastify.get<{ Params: { cardId: string } }>('/api/cards/:cardId', {
+    preHandler: [fastify.authenticate],
+  }, async (request, reply) => {
     const cardId = parseInt(request.params.cardId)
     if (isNaN(cardId)) return reply.status(400).send({ error: 'Invalid card ID' })
+
+    const { id: userId } = request.user as { id: number; email: string }
 
     const [card] = await db
       .select({
@@ -96,13 +112,14 @@ export async function cardsRoutes(fastify: FastifyInstance) {
       })
       .from(cards)
       .leftJoin(cardSets, eq(cards.setId, cardSets.id))
-      .leftJoin(collection, eq(collection.cardId, cards.id))
+      .leftJoin(collection, and(eq(collection.cardId, cards.id), eq(collection.userId, userId)))
       .where(eq(cards.id, cardId))
       .limit(1)
 
     if (!card) return reply.status(404).send({ error: 'Card not found' })
 
-    const photos = await db.select().from(cardPhotos).where(eq(cardPhotos.cardId, cardId))
+    const photos = await db.select().from(cardPhotos)
+      .where(and(eq(cardPhotos.cardId, cardId), eq(cardPhotos.userId, userId)))
 
     return {
       ...card,
@@ -113,12 +130,16 @@ export async function cardsRoutes(fastify: FastifyInstance) {
   })
 
   // GET /api/stats
-  fastify.get('/api/stats', async (_request, _reply) => {
+  fastify.get('/api/stats', {
+    preHandler: [fastify.authenticate],
+  }, async (request, _reply) => {
+    const { id: userId } = request.user as { id: number; email: string }
+
     const totalResult = await db.select({ total: count(cards.id) }).from(cards)
     const ownedResult = await db
       .select({ owned: sql<number>`CAST(COUNT(*) AS INTEGER)` })
       .from(collection)
-      .where(eq(collection.owned, true))
+      .where(and(eq(collection.owned, true), eq(collection.userId, userId)))
 
     const total = totalResult[0]?.total ?? 0
     const owned = ownedResult[0]?.owned ?? 0
@@ -133,7 +154,7 @@ export async function cardsRoutes(fastify: FastifyInstance) {
       })
       .from(cardSets)
       .leftJoin(cards, eq(cards.setId, cardSets.id))
-      .leftJoin(collection, eq(collection.cardId, cards.id))
+      .leftJoin(collection, and(eq(collection.cardId, cards.id), eq(collection.userId, userId)))
       .groupBy(cardSets.id)
       .orderBy(cardSets.orderIndex)
 

@@ -41,16 +41,41 @@ export interface Stats {
   sets: CardSet[]
 }
 
+export interface User {
+  id: number
+  email: string
+  name: string
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     ...options,
   })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw Object.assign(new Error(body.error || `HTTP ${res.status}`), { status: res.status })
+  }
   return res.json()
 }
 
 export const api = {
+  // Auth
+  login: (email: string, password: string) =>
+    request<{ user: User }>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+  register: (email: string, password: string, name: string) =>
+    request<{ user: User }>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, name }),
+    }),
+  logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
+  me: () => request<{ user: User }>('/api/auth/me'),
+
+  // Collection
   getCard: (cardId: number) => request<CardDetail>(`/api/cards/${cardId}`),
   getSets: () => request<CardSet[]>('/api/sets'),
   getSetCards: (setCode: string) => request<Card[]>(`/api/sets/${setCode}/cards`),
@@ -73,6 +98,7 @@ export const api = {
     const res = await fetch(`${BASE_URL}/api/cards/${cardId}/photos`, {
       method: 'POST',
       body: formData,
+      credentials: 'include',
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
@@ -80,6 +106,7 @@ export const api = {
   deletePhoto: async (cardId: number, photoId: number): Promise<void> => {
     const res = await fetch(`${BASE_URL}/api/cards/${cardId}/photos/${photoId}`, {
       method: 'DELETE',
+      credentials: 'include',
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
   },

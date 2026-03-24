@@ -16,10 +16,14 @@ export async function photosRoutes(fastify: FastifyInstance) {
 
   fs.mkdirSync(UPLOADS_DIR, { recursive: true })
 
-  // POST /api/cards/:cardId/photos — add a new photo
-  fastify.post<{ Params: { cardId: string } }>('/api/cards/:cardId/photos', async (request, reply) => {
+  // POST /api/cards/:cardId/photos
+  fastify.post<{ Params: { cardId: string } }>('/api/cards/:cardId/photos', {
+    preHandler: [fastify.authenticate],
+  }, async (request, reply) => {
     const cardId = parseInt(request.params.cardId)
     if (isNaN(cardId)) return reply.status(400).send({ error: 'Invalid card ID' })
+
+    const { id: userId } = request.user as { id: number; email: string }
 
     const data = await request.file()
     if (!data) return reply.status(400).send({ error: 'No file uploaded' })
@@ -35,23 +39,27 @@ export async function photosRoutes(fastify: FastifyInstance) {
     await pipeline(data.file, fs.createWriteStream(filePath))
 
     const [photo] = await db.insert(cardPhotos)
-      .values({ cardId, filename })
+      .values({ cardId, userId, filename })
       .returning()
 
     return { id: photo.id, url: `/uploads/${filename}` }
   })
 
-  // DELETE /api/cards/:cardId/photos/:photoId — delete a specific photo
+  // DELETE /api/cards/:cardId/photos/:photoId
   fastify.delete<{ Params: { cardId: string; photoId: string } }>(
-    '/api/cards/:cardId/photos/:photoId',
+    '/api/cards/:cardId/photos/:photoId', {
+      preHandler: [fastify.authenticate],
+    },
     async (request, reply) => {
       const cardId = parseInt(request.params.cardId)
       const photoId = parseInt(request.params.photoId)
       if (isNaN(cardId) || isNaN(photoId)) return reply.status(400).send({ error: 'Invalid ID' })
 
+      const { id: userId } = request.user as { id: number; email: string }
+
       const [photo] = await db.select()
         .from(cardPhotos)
-        .where(and(eq(cardPhotos.id, photoId), eq(cardPhotos.cardId, cardId)))
+        .where(and(eq(cardPhotos.id, photoId), eq(cardPhotos.cardId, cardId), eq(cardPhotos.userId, userId)))
         .limit(1)
 
       if (!photo) return reply.status(404).send({ error: 'Photo not found' })

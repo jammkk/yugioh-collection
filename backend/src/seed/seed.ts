@@ -1,7 +1,8 @@
 import postgres from 'postgres'
 import { drizzle } from 'drizzle-orm/postgres-js'
-import { cardSets, cards, collection } from '../db/schema'
+import { cardSets, cards, collection, users } from '../db/schema'
 import { parseExcel } from './parseExcel'
+import { eq } from 'drizzle-orm'
 import path from 'path'
 
 const SETS = [
@@ -50,6 +51,10 @@ async function seed() {
       })
   }
 
+  // Get default user for seeding
+  const [defaultUser] = await db.select().from(users).where(eq(users.email, 'default@yugioh.local')).limit(1)
+  const seedUserId = defaultUser?.id ?? 1
+
   // Get set map
   const setsInDb = await db.select().from(cardSets)
   const setMap = new Map(setsInDb.map(s => [s.code, s.id]))
@@ -82,13 +87,14 @@ async function seed() {
     await db.insert(collection)
       .values({
         cardId: card.id,
+        userId: seedUserId,
         owned: row.owned,
         edition: row.edition,
         condition: row.condition,
         isUltimate: row.is_ultimate,
       })
       .onConflictDoUpdate({
-        target: collection.cardId,
+        target: [collection.cardId, collection.userId],
         set: {
           owned: row.owned,
           edition: row.edition,
