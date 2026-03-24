@@ -19,6 +19,12 @@ const CONDITION_OPTIONS = [
   { value: 2, label: 'MP / HP', sub: 'Usado' },
   { value: null, label: 'No sé', sub: '' },
 ]
+const LANGUAGE_OPTIONS = [
+  { value: 1, label: 'Español' },
+  { value: 2, label: 'English' },
+  { value: 3, label: 'Japonés' },
+  { value: null, label: 'No sé' },
+]
 
 function OptionButton({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -49,6 +55,7 @@ export default function CardDetail() {
   const [edition, setEdition] = useState<number | null>(null)
   const [condition, setCondition] = useState<number | null>(null)
   const [isUltimate, setIsUltimate] = useState(false)
+  const [language, setLanguage] = useState<number | null>(null)
   const [notes, setNotes] = useState('')
   const [photoIndex, setPhotoIndex] = useState(0)
   const [imgError, setImgError] = useState(false)
@@ -60,13 +67,14 @@ export default function CardDetail() {
       setEdition(card.edition)
       setCondition(card.condition)
       setIsUltimate(card.isUltimate)
+      setLanguage(card.language)
       setNotes(card.notes ?? '')
     }
   }, [card])
 
   const handleSave = () => {
     updateCollection.mutate(
-      { owned, edition, condition, isUltimate, notes: notes || null },
+      { owned, edition, condition, isUltimate, language, notes: notes || null },
       {
         onSuccess: () => {
           setSaved(true)
@@ -288,6 +296,20 @@ export default function CardDetail() {
                   <OptionButton selected={!isUltimate} onClick={() => setIsUltimate(false)}>
                     Normal
                   </OptionButton>
+                </div>
+              </div>
+
+              {/* Language */}
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-widest mb-3 block" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  Idioma
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {LANGUAGE_OPTIONS.map(opt => (
+                    <OptionButton key={String(opt.value)} selected={language === opt.value} onClick={() => setLanguage(opt.value)}>
+                      {opt.label}
+                    </OptionButton>
+                  ))}
                 </div>
               </div>
 

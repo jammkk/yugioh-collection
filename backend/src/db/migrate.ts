@@ -49,6 +49,7 @@ async function runMigrations() {
 
   await sql`ALTER TABLE cards ADD COLUMN IF NOT EXISTS passcode INTEGER`
   await sql`ALTER TABLE collection ADD COLUMN IF NOT EXISTS notes VARCHAR(1000)`
+  await sql`ALTER TABLE collection ADD COLUMN IF NOT EXISTS language SMALLINT`
   await sql`ALTER TABLE collection DROP COLUMN IF EXISTS photo_url`
 
   await sql`

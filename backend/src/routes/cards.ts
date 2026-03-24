@@ -12,7 +12,7 @@ export async function cardsRoutes(fastify: FastifyInstance) {
   // PATCH /api/cards/:cardId/collection
   fastify.patch<{
     Params: { cardId: string }
-    Body: { owned?: boolean; edition?: number | null; condition?: number | null; is_ultimate?: boolean; notes?: string | null }
+    Body: { owned?: boolean; edition?: number | null; condition?: number | null; is_ultimate?: boolean; language?: number | null; notes?: string | null }
   }>('/api/cards/:cardId/collection', {
     preHandler: [fastify.authenticate],
   }, async (request, reply) => {
@@ -20,7 +20,7 @@ export async function cardsRoutes(fastify: FastifyInstance) {
     if (isNaN(cardId)) return reply.status(400).send({ error: 'Invalid card ID' })
 
     const { id: userId } = request.user as { id: number; email: string }
-    const { owned, edition, condition, is_ultimate, notes } = request.body
+    const { owned, edition, condition, is_ultimate, language, notes } = request.body
 
     const existing = await db.select().from(collection)
       .where(and(eq(collection.cardId, cardId), eq(collection.userId, userId)))
@@ -33,6 +33,7 @@ export async function cardsRoutes(fastify: FastifyInstance) {
           ...(edition !== undefined && { edition }),
           ...(condition !== undefined && { condition }),
           ...(is_ultimate !== undefined && { isUltimate: is_ultimate }),
+          ...(language !== undefined && { language }),
           ...(notes !== undefined && { notes }),
         })
         .where(and(eq(collection.cardId, cardId), eq(collection.userId, userId)))
@@ -44,6 +45,7 @@ export async function cardsRoutes(fastify: FastifyInstance) {
         edition: edition ?? null,
         condition: condition ?? null,
         isUltimate: is_ultimate ?? false,
+        language: language ?? null,
         notes: notes ?? null,
       })
     }
@@ -76,6 +78,7 @@ export async function cardsRoutes(fastify: FastifyInstance) {
         edition: collection.edition,
         condition: collection.condition,
         isUltimate: collection.isUltimate,
+        language: collection.language,
       })
       .from(cards)
       .leftJoin(cardSets, eq(cards.setId, cardSets.id))
@@ -108,6 +111,7 @@ export async function cardsRoutes(fastify: FastifyInstance) {
         edition: collection.edition,
         condition: collection.condition,
         isUltimate: collection.isUltimate,
+        language: collection.language,
         notes: collection.notes,
       })
       .from(cards)

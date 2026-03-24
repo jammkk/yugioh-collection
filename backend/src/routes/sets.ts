@@ -65,6 +65,7 @@ export async function setsRoutes(fastify: FastifyInstance) {
         edition: collection.edition,
         condition: collection.condition,
         isUltimate: collection.isUltimate,
+        language: collection.language,
       })
       .from(cards)
       .leftJoin(collection, and(eq(collection.cardId, cards.id), eq(collection.userId, userId)))
