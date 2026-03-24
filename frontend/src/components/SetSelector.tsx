@@ -19,9 +19,9 @@ const SET_COVER: Record<string, { passcode: number; name: string }> = {
   DCR: { passcode: 12600382, name: 'Exodia Necross' },
   IOC: { passcode: 40737112, name: 'Dark Magician of Chaos' },
   AST: { passcode: 18378582, name: 'Archlord Zerato' },
-  SOD: { passcode: 47569030, name: 'Horus the Black Flame Dragon LV8' },
+  SOD: { passcode: 48229808, name: 'Horus the Black Flame Dragon LV8' },
   RDS: { passcode: 61505339, name: 'The Creator' },
-  FET: { passcode: 41436536, name: 'Elemental HERO Phoenix Enforcer' },
+  FET: { passcode: 61441708, name: 'Sacred Phoenix of Nephthys' },
   TLM: { passcode: 83104731, name: 'Ancient Gear Golem' },
 }
 
