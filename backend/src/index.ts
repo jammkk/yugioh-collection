@@ -27,8 +27,12 @@ declare module 'fastify' {
 const fastify = Fastify({ logger: true })
 
 async function main() {
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174']
+
   await fastify.register(cors, {
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: allowedOrigins,
     credentials: true,
   })
   await fastify.register(sensible)

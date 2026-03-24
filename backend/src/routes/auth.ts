@@ -12,7 +12,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
   const COOKIE_OPTS = {
     httpOnly: true,
-    secure: false, // set true in production
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
     path: '/',
     maxAge: 60 * 60 * 24 * 7, // 7 days
