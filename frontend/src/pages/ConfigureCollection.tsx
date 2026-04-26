@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useCollection, useDeleteCollection, useUploadCollectionCover } from '../hooks/useCards'
+import { useCollection, useDeleteCollection, useUploadCollectionCover, useSets, useRemoveSetFromCollection } from '../hooks/useCards'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 
@@ -26,6 +26,9 @@ export default function ConfigureCollection() {
   const { data: collection } = useCollection(Number(collectionId))
   const deleteCollection = useDeleteCollection()
   const uploadCover = useUploadCollectionCover(Number(collectionId))
+  const { data: sets } = useSets(Number(collectionId))
+  const removeSet = useRemoveSetFromCollection(Number(collectionId))
+  const [setToDelete, setSetToDelete] = useState<string | null>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
   const excelInputRef = useRef<HTMLInputElement>(null)
 
@@ -57,12 +60,14 @@ export default function ConfigureCollection() {
   const [expandedCard, setExpandedCard] = useState<number | null>(null)
   const [addedCards, setAddedCards] = useState<Set<string>>(new Set())
   const addCardMutation = useMutation({
-    mutationFn: (data: { cardCode: string; name: string; passcode: number; setCode: string; setName: string }) =>
+    mutationFn: (data: { name: string; passcode: number; cardCode?: string; setCode?: string; setName?: string }) =>
       api.addCard(Number(collectionId), data),
     onSuccess: (_data, vars) => {
-      setAddedCards(prev => new Set([...prev, vars.cardCode]))
+      const key = vars.cardCode ?? `DIRECT-${vars.passcode}`
+      setAddedCards(prev => new Set([...prev, key]))
       queryClient.invalidateQueries({ queryKey: ['sets', Number(collectionId)] })
       queryClient.invalidateQueries({ queryKey: ['stats', Number(collectionId)] })
+      queryClient.invalidateQueries({ queryKey: ['collections', Number(collectionId), 'all-cards'] })
     },
   })
 
@@ -243,6 +248,47 @@ export default function ConfigureCollection() {
                 onChange={e => { const f = e.target.files?.[0]; if (f) importMutation.mutate(f); e.target.value = '' }} />
             </section>
 
+            {/* Gestionar sets */}
+            {sets && sets.length > 0 && (
+              <section className="rounded-2xl p-5 space-y-3" style={{ background: 'rgba(17,28,50,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>Sets en esta colección</h2>
+                <div className="space-y-1.5">
+                  {sets.map(set => (
+                    <div key={set.code} className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs font-bold font-mono text-gold-400 shrink-0">{set.code}</span>
+                        <span className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>{set.name}</span>
+                        <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.2)' }}>{set.totalCards} cartas</span>
+                      </div>
+                      {setToDelete === set.code ? (
+                        <div className="flex gap-1.5 shrink-0">
+                          <button onClick={() => setSetToDelete(null)}
+                            className="text-xs px-2 py-1 rounded-lg transition-all"
+                            style={{ color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            No
+                          </button>
+                          <button
+                            onClick={() => removeSet.mutate(set.code, { onSuccess: () => setSetToDelete(null) })}
+                            disabled={removeSet.isPending}
+                            className="text-xs px-2 py-1 rounded-lg font-semibold transition-all disabled:opacity-50"
+                            style={{ background: 'rgba(220,38,38,0.15)', color: 'rgba(255,100,100,0.9)', border: '1px solid rgba(220,38,38,0.2)' }}>
+                            {removeSet.isPending ? '...' : 'Sí, eliminar'}
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setSetToDelete(set.code)}
+                          className="text-xs px-2 py-1 rounded-lg transition-all shrink-0"
+                          style={{ color: 'rgba(255,100,100,0.4)', border: '1px solid rgba(255,60,60,0.1)' }}>
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Agregar carta individual */}
             <section className="rounded-2xl p-5 space-y-4" style={{ background: 'rgba(17,28,50,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>Agregar carta individual</h2>
@@ -279,26 +325,46 @@ export default function ConfigureCollection() {
                   {searchResults.map(card => (
                     <div key={card.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
                       {/* Card header */}
-                      <button
-                        className="w-full flex items-center gap-3 p-3 text-left transition-all"
+                      <div
+                        className="flex items-center gap-3 p-3"
                         style={{ background: 'rgba(255,255,255,0.03)' }}
-                        onClick={() => setExpandedCard(expandedCard === card.id ? null : card.id)}
                       >
                         <img
                           src={`https://images.ygoprodeck.com/images/cards_small/${card.id}.jpg`}
                           alt={card.name}
                           className="w-8 h-11 object-cover rounded-md shrink-0"
                         />
-                        <div className="flex-1 min-w-0">
+                        <button
+                          className="flex-1 min-w-0 text-left"
+                          onClick={() => setExpandedCard(expandedCard === card.id ? null : card.id)}
+                        >
                           <div className="text-sm font-medium text-white truncate">{card.name}</div>
                           <div className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                            {card.card_sets?.length ?? 0} ediciones disponibles
+                            {card.card_sets?.length ?? 0} ediciones · toca para ver
                           </div>
-                        </div>
-                        <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                        </button>
+                        {(() => {
+                          const directKey = `DIRECT-${card.id}`
+                          const isAdded = addedCards.has(directKey)
+                          return (
+                            <button
+                              onClick={() => addCardMutation.mutate({ name: card.name, passcode: card.id })}
+                              disabled={isAdded || addCardMutation.isPending}
+                              className="text-xs px-2.5 py-1 rounded-lg font-semibold transition-all shrink-0 disabled:opacity-40"
+                              style={isAdded
+                                ? { background: 'rgba(34,197,94,0.12)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.2)' }
+                                : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.1)' }
+                              }
+                            >
+                              {isAdded ? '✓' : '+ Directa'}
+                            </button>
+                          )
+                        })()}
+                        <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.2)' }}
+                          onClick={() => setExpandedCard(expandedCard === card.id ? null : card.id)}>
                           {expandedCard === card.id ? '▲' : '▼'}
                         </span>
-                      </button>
+                      </div>
 
                       {/* Printings */}
                       {expandedCard === card.id && card.card_sets && (

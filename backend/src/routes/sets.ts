@@ -60,6 +60,7 @@ export async function setsRoutes(fastify: FastifyInstance) {
       .select({
         id: cards.id,
         name: cards.name,
+        nameEn: cards.nameEn,
         cardCode: cards.cardCode,
         wikiUrl: cards.wikiUrl,
         passcode: cards.passcode,

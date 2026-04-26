@@ -151,6 +151,17 @@ async function runMigrations() {
   // Mark any existing collections as configured (they were seeded with data)
   await sql`UPDATE user_collections SET configured = true WHERE configured = false AND created_at < now() - interval '1 minute'`
 
+  // User profile fields
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS konami_id VARCHAR(100)`
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS duelingbook_username VARCHAR(100)`
+
+  // Direct cards support: make set_id nullable and add collection_id to cards
+  await sql`ALTER TABLE cards ALTER COLUMN set_id DROP NOT NULL`
+  await sql`ALTER TABLE cards ADD COLUMN IF NOT EXISTS collection_id INTEGER REFERENCES user_collections(id)`
+
+  // English name for TCGPlayer search
+  await sql`ALTER TABLE cards ADD COLUMN IF NOT EXISTS name_en VARCHAR(255)`
+
   console.log('Migrations complete!')
   await sql.end()
   process.exit(0)

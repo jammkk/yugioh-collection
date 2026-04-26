@@ -6,7 +6,7 @@ const BASE_URL = 'http://localhost:3000'
 
 interface CardCardProps {
   card: Card
-  setCode: string
+  setCode: string | null
   collectionId: number
   onUpdateCollection: (data: { cardId: number; owned: boolean; edition: number | null; condition: number | null; isUltimate: boolean }) => void
   onUploadPhoto?: (cardId: number, file: File) => void
@@ -32,7 +32,13 @@ export default function CardCard({ card, setCode, collectionId, onUploadPhoto, o
     e.target.value = ''
   }
 
-  const goToDetail = () => navigate(`/collections/${collectionId}/sets/${setCode}/cards/${card.id}`)
+  const goToDetail = () => {
+    if (setCode) {
+      navigate(`/collections/${collectionId}/sets/${setCode}/cards/${card.id}`)
+    } else {
+      navigate(`/collections/${collectionId}/cards/${card.id}`)
+    }
+  }
 
   return (
     <div
@@ -133,7 +139,7 @@ export default function CardCard({ card, setCode, collectionId, onUploadPhoto, o
 
       {/* Info */}
       <div className="p-2.5">
-        <div className="font-mono text-xs mb-0.5 text-gold-500/70">{card.cardCode}</div>
+        <div className="font-mono text-xs text-gold-500/70 mb-0.5">{card.cardCode}</div>
         <div className="text-xs font-medium leading-tight line-clamp-2 mb-2"
           style={{ color: card.owned ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.4)' }}>
           {card.name}
@@ -162,18 +168,33 @@ export default function CardCard({ card, setCode, collectionId, onUploadPhoto, o
             {card.owned ? '✓ Tengo' : '+ Añadir'}
           </button>
 
-          {card.wikiUrl && (
-            <a href={card.wikiUrl} target="_blank" rel="noopener noreferrer"
-              className="w-6 h-6 flex items-center justify-center rounded-lg transition-colors"
-              style={{ color: 'rgba(255,255,255,0.2)' }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#e8a613'}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.2)'}
-              onClick={e => e.stopPropagation()}>
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </a>
-          )}
+          <div className="flex gap-1">
+            {card.wikiUrl && (
+              <a href={card.wikiUrl} target="_blank" rel="noopener noreferrer"
+                className="w-6 h-6 flex items-center justify-center rounded-lg transition-colors"
+                style={{ color: 'rgba(255,255,255,0.2)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#e8a613'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.2)'}
+                onClick={e => e.stopPropagation()}>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            )}
+            {!card.cardCode.startsWith('DIRECT-') && (
+              <a
+                href={`https://www.tcgplayer.com/search/yugioh/product?productLineName=yugioh&q=${encodeURIComponent(card.nameEn ?? card.name)}&view=grid`}
+                target="_blank" rel="noopener noreferrer"
+                className="w-6 h-6 flex items-center justify-center rounded-lg transition-colors"
+                style={{ color: 'rgba(255,255,255,0.2)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#1a9b6e'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.2)'}
+                onClick={e => e.stopPropagation()}
+                title="Ver en TCGPlayer">
+                <span className="text-xs font-bold" style={{ fontSize: '9px', lineHeight: 1 }}>TCG</span>
+              </a>
+            )}
+          </div>
         </div>
       </div>
     </div>

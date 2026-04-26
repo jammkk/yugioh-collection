@@ -60,15 +60,26 @@ export default function Collections() {
                 {user?.name}
               </p>
             </div>
-            <button
-              onClick={logout}
-              className="text-xs px-3 py-1.5 rounded-lg transition-all"
-              style={{ color: 'rgba(255,255,255,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'}
-            >
-              Salir
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/profile')}
+                className="text-xs px-3 py-1.5 rounded-lg transition-all"
+                style={{ color: 'rgba(255,255,255,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'}
+              >
+                Perfil
+              </button>
+              <button
+                onClick={logout}
+                className="text-xs px-3 py-1.5 rounded-lg transition-all"
+                style={{ color: 'rgba(255,255,255,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'}
+              >
+                Salir
+              </button>
+            </div>
           </div>
         </div>
       </header>

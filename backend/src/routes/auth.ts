@@ -73,9 +73,39 @@ export async function authRoutes(fastify: FastifyInstance) {
       id: users.id,
       email: users.email,
       name: users.name,
+      konamiId: users.konamiId,
+      duelingbookUsername: users.duelingbookUsername,
     }).from(users).where(eq(users.id, id)).limit(1)
 
     if (!user) return reply.status(404).send({ error: 'Usuario no encontrado' })
     return { user }
+  })
+
+  // PATCH /api/auth/profile
+  fastify.patch<{
+    Body: { name?: string; konamiId?: string | null; duelingbookUsername?: string | null }
+  }>('/api/auth/profile', {
+    preHandler: [fastify.authenticate],
+  }, async (request, reply) => {
+    const { id } = request.user as { id: number; email: string }
+    const { name, konamiId, duelingbookUsername } = request.body
+
+    const updates: Partial<{ name: string; konamiId: string | null; duelingbookUsername: string | null }> = {}
+    if (name !== undefined) {
+      if (!name.trim()) return reply.status(400).send({ error: 'El nombre no puede estar vacío' })
+      updates.name = name.trim()
+    }
+    if (konamiId !== undefined) updates.konamiId = konamiId?.trim() || null
+    if (duelingbookUsername !== undefined) updates.duelingbookUsername = duelingbookUsername?.trim() || null
+
+    if (Object.keys(updates).length === 0) return reply.status(400).send({ error: 'Nada que actualizar' })
+
+    const [updated] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning({ id: users.id, email: users.email, name: users.name, konamiId: users.konamiId, duelingbookUsername: users.duelingbookUsername })
+
+    return { user: updated }
   })
 }

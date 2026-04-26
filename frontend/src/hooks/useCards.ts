@@ -153,6 +153,31 @@ export function useUploadPhotoForCard(cardId: number) {
   })
 }
 
+export function useRemoveCardFromCollection(collectionId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (cardId: number) => api.removeCardFromCollection(collectionId, cardId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sets'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
+      queryClient.invalidateQueries({ queryKey: ['collections', collectionId, 'all-cards'] })
+    },
+  })
+}
+
+export function useRemoveSetFromCollection(collectionId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (setCode: string) => api.removeSetFromCollection(collectionId, setCode),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sets'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
+    },
+  })
+}
+
 export function useDeletePhotoForCard(cardId: number) {
   const queryClient = useQueryClient()
   return useMutation({

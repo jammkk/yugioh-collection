@@ -139,9 +139,12 @@ export async function importRoutes(fastify: FastifyInstance) {
       const [existingCard] = await db.select().from(cards).where(eq(cards.cardCode, row.card_code)).limit(1)
       if (existingCard) {
         cardId = existingCard.id
+        if (!existingCard.nameEn) {
+          await db.update(cards).set({ nameEn: cardInfo.name }).where(eq(cards.id, cardId))
+        }
       } else {
         const [created] = await db.insert(cards)
-          .values({ name: cardInfo.name, cardCode: row.card_code, setId, passcode: cardInfo.passcode })
+          .values({ name: cardInfo.name, nameEn: cardInfo.name, cardCode: row.card_code, setId, passcode: cardInfo.passcode })
           .returning()
         cardId = created.id
       }
@@ -171,46 +174,79 @@ export async function importRoutes(fastify: FastifyInstance) {
     return { imported, notFound }
   })
 
-  // POST /api/collections/:id/cards — add single card
+  // POST /api/collections/:id/cards — add single card (with or without set)
   fastify.post<{
     Params: { id: string }
-    Body: { cardCode: string; name: string; passcode: number; setCode: string; setName: string }
+    Body: { name: string; passcode: number; cardCode?: string; setCode?: string; setName?: string }
   }>('/api/collections/:id/cards', {
     preHandler: [fastify.authenticate],
   }, async (request, reply) => {
     const { id: userId } = request.user as { id: number; email: string }
     const collectionId = parseInt(request.params.id)
-    const { cardCode, name, passcode, setCode, setName } = request.body
+    const { name, passcode, setCode, setName } = request.body
 
     const [col] = await db.select().from(userCollections).where(eq(userCollections.id, collectionId)).limit(1)
     if (!col || col.userId !== userId) return reply.status(404).send({ error: 'Colección no encontrada' })
 
-    // Find or create set
-    let setId: number
-    const [existingSet] = await db.select().from(cardSets)
-      .where(and(eq(cardSets.code, setCode), eq(cardSets.collectionId, collectionId)))
-      .limit(1)
-    if (existingSet) {
-      setId = existingSet.id
-    } else {
-      const existingForOrder = await db.select().from(cardSets).where(eq(cardSets.collectionId, collectionId))
-      const orderIndex = existingForOrder.length > 0 ? Math.max(...existingForOrder.map(s => s.orderIndex)) + 1 : 0
-      const [created] = await db.insert(cardSets)
-        .values({ code: setCode, name: setName, orderIndex, collectionId })
-        .returning()
-      setId = created.id
-    }
-
-    // Find or create card
     let cardId: number
-    const [existingCard] = await db.select().from(cards).where(eq(cards.cardCode, cardCode)).limit(1)
-    if (existingCard) {
-      cardId = existingCard.id
+
+    if (setCode && setName) {
+      // --- Card with set ---
+      const cardCode = request.body.cardCode ?? `${setCode}-${passcode}`
+
+      // Find or create set
+      let setId: number
+      const [existingSet] = await db.select().from(cardSets)
+        .where(and(eq(cardSets.code, setCode), eq(cardSets.collectionId, collectionId)))
+        .limit(1)
+      if (existingSet) {
+        setId = existingSet.id
+      } else {
+        const existingForOrder = await db.select().from(cardSets).where(eq(cardSets.collectionId, collectionId))
+        const orderIndex = existingForOrder.length > 0 ? Math.max(...existingForOrder.map(s => s.orderIndex)) + 1 : 0
+        const [created] = await db.insert(cardSets)
+          .values({ code: setCode, name: setName, orderIndex, collectionId })
+          .returning()
+        setId = created.id
+      }
+
+      // Find or create card
+      const [existingCard] = await db.select().from(cards).where(eq(cards.cardCode, cardCode)).limit(1)
+      if (existingCard) {
+        cardId = existingCard.id
+        if (!existingCard.nameEn) {
+          await db.update(cards).set({ nameEn: name }).where(eq(cards.id, cardId))
+        }
+      } else {
+        const [created] = await db.insert(cards)
+          .values({ name, nameEn: name, cardCode, setId, passcode })
+          .returning()
+        cardId = created.id
+      }
+
+      if (col.viewMode !== 'sets') {
+        await db.update(userCollections).set({ configured: true, viewMode: 'cards' }).where(eq(userCollections.id, collectionId))
+      } else {
+        await db.update(userCollections).set({ configured: true }).where(eq(userCollections.id, collectionId))
+      }
     } else {
-      const [created] = await db.insert(cards)
-        .values({ name, cardCode, setId, passcode })
-        .returning()
-      cardId = created.id
+      // --- Direct card (no set) ---
+      const cardCode = `DIRECT-${passcode}`
+
+      const [existingCard] = await db.select().from(cards).where(eq(cards.cardCode, cardCode)).limit(1)
+      if (existingCard) {
+        cardId = existingCard.id
+        if (!existingCard.nameEn) {
+          await db.update(cards).set({ nameEn: name }).where(eq(cards.id, cardId))
+        }
+      } else {
+        const [created] = await db.insert(cards)
+          .values({ name, nameEn: name, cardCode, setId: null, collectionId, passcode })
+          .returning()
+        cardId = created.id
+      }
+
+      await db.update(userCollections).set({ configured: true }).where(eq(userCollections.id, collectionId))
     }
 
     // Create collection entry if not exists
@@ -221,13 +257,6 @@ export async function importRoutes(fastify: FastifyInstance) {
       await db.insert(collection).values({ cardId, userId, owned: false })
     }
 
-    // Only set viewMode to 'cards' if collection hasn't been configured via Excel (keep 'sets' if already set)
-    if (col.viewMode !== 'sets') {
-      await db.update(userCollections).set({ configured: true, viewMode: 'cards' }).where(eq(userCollections.id, collectionId))
-    } else {
-      await db.update(userCollections).set({ configured: true }).where(eq(userCollections.id, collectionId))
-    }
-
-    return reply.status(201).send({ cardId, setId })
+    return reply.status(201).send({ cardId })
   })
 }

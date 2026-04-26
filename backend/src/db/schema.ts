@@ -6,6 +6,8 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   name: varchar('name', { length: 100 }).notNull(),
+  konamiId: varchar('konami_id', { length: 100 }),
+  duelingbookUsername: varchar('duelingbook_username', { length: 100 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
@@ -30,8 +32,10 @@ export const cardSets = pgTable('card_sets', {
 export const cards = pgTable('cards', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
+  nameEn: varchar('name_en', { length: 255 }),
   cardCode: varchar('card_code', { length: 20 }).notNull().unique(),
-  setId: integer('set_id').notNull().references(() => cardSets.id),
+  setId: integer('set_id').references(() => cardSets.id),
+  collectionId: integer('collection_id').references(() => userCollections.id),
   wikiUrl: varchar('wiki_url', { length: 500 }),
   passcode: integer('passcode'),
 })
@@ -65,6 +69,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 export const userCollectionsRelations = relations(userCollections, ({ one, many }) => ({
   user: one(users, { fields: [userCollections.userId], references: [users.id] }),
   cardSets: many(cardSets),
+  directCards: many(cards),
 }))
 
 export const cardSetsRelations = relations(cardSets, ({ many, one }) => ({
@@ -74,6 +79,7 @@ export const cardSetsRelations = relations(cardSets, ({ many, one }) => ({
 
 export const cardsRelations = relations(cards, ({ one, many }) => ({
   cardSet: one(cardSets, { fields: [cards.setId], references: [cardSets.id] }),
+  userCollection: one(userCollections, { fields: [cards.collectionId], references: [userCollections.id] }),
   collection: many(collection),
   photos: many(cardPhotos),
 }))

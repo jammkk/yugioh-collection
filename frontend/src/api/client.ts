@@ -32,6 +32,7 @@ export interface CardPhoto {
 export interface Card {
   id: number
   name: string
+  nameEn?: string | null
   cardCode: string
   wikiUrl: string | null
   passcode?: number | null
@@ -50,7 +51,7 @@ export interface CardDetail extends Card {
 }
 
 export interface CollectionCard extends Card {
-  setCode: string
+  setCode: string | null
 }
 
 export interface UserCollection {
@@ -76,6 +77,8 @@ export interface User {
   id: number
   email: string
   name: string
+  konamiId?: string | null
+  duelingbookUsername?: string | null
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -104,6 +107,8 @@ export const api = {
     }),
   logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
   me: () => request<{ user: User }>('/api/auth/me'),
+  updateProfile: (data: { name?: string; konamiId?: string | null; duelingbookUsername?: string | null }) =>
+    request<{ user: User }>('/api/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Collections
   getCollections: () => request<UserCollection[]>('/api/collections'),
@@ -163,8 +168,12 @@ export const api = {
     }
     return res.json()
   },
-  addCard: (collectionId: number, data: { cardCode: string; name: string; passcode: number; setCode: string; setName: string }) =>
+  addCard: (collectionId: number, data: { name: string; passcode: number; cardCode?: string; setCode?: string; setName?: string }) =>
     request(`/api/collections/${collectionId}/cards`, { method: 'POST', body: JSON.stringify(data) }),
+  removeCardFromCollection: (collectionId: number, cardId: number) =>
+    request<{ ok: boolean }>(`/api/collections/${collectionId}/cards/${cardId}`, { method: 'DELETE' }),
+  removeSetFromCollection: (collectionId: number, setCode: string) =>
+    request<{ ok: boolean }>(`/api/collections/${collectionId}/sets/${setCode}`, { method: 'DELETE' }),
   downloadSampleExcel: () => {
     const token = getToken()
     const link = document.createElement('a')

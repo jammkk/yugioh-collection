@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { userCollections, collection, cards, cardSets, cardPhotos, users } from '../db/schema'
-import { eq, sql, count, and, inArray } from 'drizzle-orm'
+import { eq, sql, count, and, inArray, isNull, isNotNull, not } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -48,8 +48,32 @@ export async function collectionsRoutes(fastify: FastifyInstance) {
       .where(eq(collection.userId, userId))
       .groupBy(cardSets.collectionId)
 
+    // Direct cards (no set, collectionId on cards table)
+    const directTotalPerCollection = await db
+      .select({ collectionId: cards.collectionId, total: count(cards.id) })
+      .from(cards)
+      .where(and(isNotNull(cards.collectionId), isNull(cards.setId)))
+      .groupBy(cards.collectionId)
+
+    const directOwnedPerCollection = await db
+      .select({
+        collectionId: cards.collectionId,
+        owned: sql<number>`CAST(SUM(CASE WHEN ${collection.owned} = true THEN 1 ELSE 0 END) AS INTEGER)`,
+      })
+      .from(collection)
+      .innerJoin(cards, and(eq(collection.cardId, cards.id), isNotNull(cards.collectionId), isNull(cards.setId)))
+      .where(eq(collection.userId, userId))
+      .groupBy(cards.collectionId)
+
     const totalMap = new Map(totalPerCollection.map(r => [r.collectionId, r.total]))
     const ownedMap = new Map(ownedPerCollection.map(r => [r.collectionId, r.owned]))
+
+    for (const r of directTotalPerCollection) {
+      if (r.collectionId !== null) totalMap.set(r.collectionId, (totalMap.get(r.collectionId) ?? 0) + r.total)
+    }
+    for (const r of directOwnedPerCollection) {
+      if (r.collectionId !== null) ownedMap.set(r.collectionId, (ownedMap.get(r.collectionId) ?? 0) + (r.owned ?? 0))
+    }
 
     return cols.map(c => {
       const total = totalMap.get(c.id) ?? 0
@@ -206,10 +230,11 @@ export async function collectionsRoutes(fastify: FastifyInstance) {
     const [col] = await db.select().from(userCollections).where(eq(userCollections.id, collectionId)).limit(1)
     if (!col || col.userId !== userId) return reply.status(404).send({ error: 'Colección no encontrada' })
 
-    const rows = await db
+    const setRows = await db
       .select({
         id: cards.id,
         name: cards.name,
+        nameEn: cards.nameEn,
         cardCode: cards.cardCode,
         wikiUrl: cards.wikiUrl,
         passcode: cards.passcode,
@@ -226,6 +251,30 @@ export async function collectionsRoutes(fastify: FastifyInstance) {
       .where(eq(cardSets.collectionId, collectionId))
       .orderBy(cardSets.orderIndex, cards.cardCode)
 
+    const directRows = await db
+      .select({
+        id: cards.id,
+        name: cards.name,
+        nameEn: cards.nameEn,
+        cardCode: cards.cardCode,
+        wikiUrl: cards.wikiUrl,
+        passcode: cards.passcode,
+        owned: sql<boolean>`COALESCE(${collection.owned}, false)`,
+        edition: collection.edition,
+        condition: collection.condition,
+        isUltimate: sql<boolean>`COALESCE(${collection.isUltimate}, false)`,
+        language: collection.language,
+      })
+      .from(cards)
+      .leftJoin(collection, and(eq(collection.cardId, cards.id), eq(collection.userId, userId)))
+      .where(and(eq(cards.collectionId, collectionId), isNull(cards.setId)))
+      .orderBy(cards.name)
+
+    const rows = [
+      ...setRows,
+      ...directRows.map(r => ({ ...r, setCode: null as string | null })),
+    ]
+
     const cardIds = rows.map(r => r.id)
     const photosMap = new Map<number, { id: number; url: string }[]>()
     if (cardIds.length > 0) {
@@ -241,6 +290,69 @@ export async function collectionsRoutes(fastify: FastifyInstance) {
     }
 
     return rows.map(r => ({ ...r, photos: photosMap.get(r.id) ?? [] }))
+  })
+
+  // DELETE /api/collections/:id/sets/:setCode
+  fastify.delete<{ Params: { id: string; setCode: string } }>('/api/collections/:id/sets/:setCode', {
+    preHandler: [fastify.authenticate],
+  }, async (request, reply) => {
+    const { id: userId } = request.user as { id: number; email: string }
+    const collectionId = parseInt(request.params.id)
+    const setCode = request.params.setCode.toUpperCase()
+
+    const [col] = await db.select().from(userCollections).where(eq(userCollections.id, collectionId)).limit(1)
+    if (!col || col.userId !== userId) return reply.status(404).send({ error: 'Colección no encontrada' })
+
+    const [set] = await db.select().from(cardSets)
+      .where(and(eq(cardSets.code, setCode), eq(cardSets.collectionId, collectionId)))
+      .limit(1)
+    if (!set) return reply.status(404).send({ error: 'Set no encontrado en esta colección' })
+
+    const cardsInSet = await db.select({ id: cards.id }).from(cards).where(eq(cards.setId, set.id))
+    const cardIds = cardsInSet.map(c => c.id)
+
+    if (cardIds.length > 0) {
+      await db.delete(collection).where(and(inArray(collection.cardId, cardIds), eq(collection.userId, userId)))
+      await db.delete(cardPhotos).where(and(inArray(cardPhotos.cardId, cardIds), eq(cardPhotos.userId, userId)))
+      // Orphan cards (set setId to null) so the FK allows deleting the set
+      await db.update(cards).set({ setId: null }).where(inArray(cards.id, cardIds))
+    }
+
+    await db.delete(cardSets).where(eq(cardSets.id, set.id))
+    return { ok: true }
+  })
+
+  // DELETE /api/collections/:id/cards/:cardId
+  fastify.delete<{ Params: { id: string; cardId: string } }>('/api/collections/:id/cards/:cardId', {
+    preHandler: [fastify.authenticate],
+  }, async (request, reply) => {
+    const { id: userId } = request.user as { id: number; email: string }
+    const collectionId = parseInt(request.params.id)
+    const cardId = parseInt(request.params.cardId)
+
+    const [col] = await db.select().from(userCollections).where(eq(userCollections.id, collectionId)).limit(1)
+    if (!col || col.userId !== userId) return reply.status(404).send({ error: 'Colección no encontrada' })
+
+    const [card] = await db.select().from(cards).where(eq(cards.id, cardId)).limit(1)
+    if (!card) return reply.status(404).send({ error: 'Carta no encontrada' })
+
+    await db.delete(collection).where(and(eq(collection.cardId, cardId), eq(collection.userId, userId)))
+    await db.delete(cardPhotos).where(and(eq(cardPhotos.cardId, cardId), eq(cardPhotos.userId, userId)))
+
+    // Check if any other user still tracks this card
+    const [otherEntry] = await db.select({ id: collection.id }).from(collection)
+      .where(and(eq(collection.cardId, cardId), not(eq(collection.userId, userId))))
+      .limit(1)
+
+    if (!otherEntry) {
+      // No other users reference this card — safe to delete it
+      await db.delete(cards).where(eq(cards.id, cardId))
+    } else if (card.setId !== null) {
+      // Other users have this card — orphan it from the set so it disappears from this set's view
+      await db.update(cards).set({ setId: null }).where(eq(cards.id, cardId))
+    }
+
+    return { ok: true }
   })
 
   // DELETE /api/collections/:id
