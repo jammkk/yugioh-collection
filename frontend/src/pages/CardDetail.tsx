@@ -273,10 +273,10 @@ export default function CardDetail() {
             </div>
             <button
               onClick={() => setOwned(o => !o)}
-              className="relative w-11 h-6 rounded-full transition-all duration-300"
+              className="relative shrink-0 w-11 h-6 rounded-full transition-all duration-300"
               style={{ background: owned ? 'linear-gradient(135deg,#f5c842,#e8a613)' : 'rgba(255,255,255,0.08)' }}
             >
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${owned ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${owned ? 'left-5' : 'left-0.5'}`} />
             </button>
           </div>
 

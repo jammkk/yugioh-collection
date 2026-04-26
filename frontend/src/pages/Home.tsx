@@ -175,7 +175,16 @@ export default function Home() {
               </>
             )}
 
-            <div className="mt-10 flex justify-center">
+            <div className="mt-10 flex justify-center gap-3">
+              <button
+                onClick={() => navigate(`/collections/${collectionId}/filter`)}
+                className="text-xs px-4 py-2 rounded-xl transition-all"
+                style={{ color: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.06)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.25)'}
+              >
+                &#128269; Filtros
+              </button>
               <button
                 onClick={() => navigate(`/collections/${collectionId}/configure`)}
                 className="text-xs px-4 py-2 rounded-xl transition-all"
@@ -183,7 +192,7 @@ export default function Home() {
                 onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.25)'}
               >
-                &#9881; Configurar colección
+                &#9881; Configurar
               </button>
             </div>
           </>
