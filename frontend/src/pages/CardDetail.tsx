@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   useCardDetail,
   useUpdateCardDetail,
   useUploadPhotoForCard,
   useDeletePhotoForCard,
+  useRemoveCardFromCollection,
 } from '../hooks/useCards'
 
 const BASE_URL = 'http://localhost:3000'
@@ -45,7 +46,8 @@ function OptionButton({ selected, onClick, children }: { selected: boolean; onCl
 }
 
 export default function CardDetail() {
-  const { setCode = '', cardId = '' } = useParams()
+  const { setCode = '', cardId = '', collectionId = '' } = useParams()
+  const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const id = parseInt(cardId)
 
@@ -53,6 +55,9 @@ export default function CardDetail() {
   const updateCollection = useUpdateCardDetail(id)
   const uploadPhoto = useUploadPhotoForCard(id)
   const deletePhoto = useDeletePhotoForCard(id)
+  const removeCard = useRemoveCardFromCollection(Number(collectionId))
+
+  const [confirmRemove, setConfirmRemove] = useState(false)
 
   const [owned, setOwned] = useState(false)
   const [edition, setEdition] = useState<number | null>(null)
@@ -122,7 +127,7 @@ export default function CardDetail() {
       <header className="sticky top-0 z-20 glass-dark">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
           <Link
-            to={`/sets/${setCode}`}
+            to={setCode ? `/collections/${collectionId}/sets/${setCode}` : `/collections/${collectionId}`}
             className="flex items-center gap-1 text-sm font-medium shrink-0 transition-colors"
             style={{ color: 'rgba(255,255,255,0.35)' }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#e8a613'}
@@ -131,7 +136,7 @@ export default function CardDetail() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            {setCode}
+            {setCode || 'Colección'}
           </Link>
           <span style={{ color: 'rgba(255,255,255,0.12)' }}>/</span>
           <span className="text-sm font-medium truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{card.name}</span>
@@ -234,6 +239,27 @@ export default function CardDetail() {
           </div>
         )}
 
+        {/* Link a TCGPlayer */}
+        {!card.cardCode.startsWith('DIRECT-') && (
+          <a
+            href={`https://www.tcgplayer.com/search/yugioh/product?productLineName=yugioh&q=${encodeURIComponent(card.nameEn ?? card.name)}&view=grid`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between rounded-2xl p-4 transition-all"
+            style={{ background: 'rgba(17,28,50,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(26,155,110,0.3)'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)'}
+          >
+            <div>
+              <div className="text-sm font-semibold text-white">Ver precio en TCGPlayer</div>
+              <div className="text-xs mt-0.5 font-mono" style={{ color: 'rgba(255,255,255,0.3)' }}>{card.cardCode}</div>
+            </div>
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: 'rgba(26,155,110,0.7)' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+        )}
+
         {/* Collection form */}
         <div className="rounded-2xl p-5 space-y-5" style={{ background: 'rgba(17,28,50,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
 
@@ -247,10 +273,10 @@ export default function CardDetail() {
             </div>
             <button
               onClick={() => setOwned(o => !o)}
-              className="relative w-11 h-6 rounded-full transition-all duration-300"
+              className="relative shrink-0 w-11 h-6 rounded-full transition-all duration-300"
               style={{ background: owned ? 'linear-gradient(135deg,#f5c842,#e8a613)' : 'rgba(255,255,255,0.08)' }}
             >
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${owned ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${owned ? 'left-5' : 'left-0.5'}`} />
             </button>
           </div>
 
@@ -351,6 +377,37 @@ export default function CardDetail() {
           >
             {saved ? '✓ Guardado' : updateCollection.isPending ? 'Guardando...' : 'Guardar'}
           </button>
+
+          {/* Remove from collection */}
+          {!confirmRemove ? (
+            <button
+              onClick={() => setConfirmRemove(true)}
+              className="w-full py-2 rounded-xl text-xs font-medium transition-all"
+              style={{ background: 'transparent', color: 'rgba(255,100,100,0.5)', border: '1px solid rgba(255,60,60,0.12)' }}
+            >
+              Quitar carta de colección
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmRemove(false)}
+                className="flex-1 py-2 rounded-xl text-xs font-medium transition-all"
+                style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => removeCard.mutate(id, {
+                  onSuccess: () => navigate(`/collections/${collectionId}`),
+                })}
+                disabled={removeCard.isPending}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
+                style={{ background: 'rgba(220,38,38,0.15)', color: 'rgba(255,100,100,0.9)', border: '1px solid rgba(220,38,38,0.2)' }}
+              >
+                {removeCard.isPending ? 'Quitando...' : 'Confirmar'}
+              </button>
+            </div>
+          )}
         </div>
       </main>
 

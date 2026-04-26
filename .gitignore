@@ -17,6 +17,8 @@ backend/data/
 # Environment
 .env
 .env.local
+.env.production
+backend/.env.production
 
 # OS
 .DS_Store

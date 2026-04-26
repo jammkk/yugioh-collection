@@ -4,6 +4,7 @@ import ProgressBar from './ProgressBar'
 
 interface SetSelectorProps {
   sets: CardSet[]
+  collectionId: number
 }
 
 // Cover card passcodes from YGOPRODeck for each set
@@ -25,7 +26,7 @@ const SET_COVER: Record<string, { passcode: number; name: string }> = {
   TLM: { passcode: 83104731, name: 'Ancient Gear Golem' },
 }
 
-export default function SetSelector({ sets }: SetSelectorProps) {
+export default function SetSelector({ sets, collectionId }: SetSelectorProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
       {sets.map(set => {
@@ -38,7 +39,7 @@ export default function SetSelector({ sets }: SetSelectorProps) {
         return (
           <Link
             key={set.code}
-            to={`/sets/${set.code}`}
+            to={`/collections/${collectionId}/sets/${set.code}`}
             className="group relative flex overflow-hidden rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
             style={{
               border: `1px solid ${complete ? 'rgba(232,166,19,0.3)' : 'rgba(255,255,255,0.06)'}`,

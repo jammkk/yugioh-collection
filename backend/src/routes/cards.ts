@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { cardSets, cards, collection, cardPhotos } from '../db/schema'
-import { eq, sql, ilike, count, and } from 'drizzle-orm'
+import { eq, sql, ilike, count, and, isNull, isNotNull } from 'drizzle-orm'
 
 export async function cardsRoutes(fastify: FastifyInstance) {
   const connectionString = process.env.DATABASE_URL || 'postgresql://yugioh:yugioh@localhost:5434/collection'
@@ -102,6 +102,7 @@ export async function cardsRoutes(fastify: FastifyInstance) {
       .select({
         id: cards.id,
         name: cards.name,
+        nameEn: cards.nameEn,
         cardCode: cards.cardCode,
         wikiUrl: cards.wikiUrl,
         passcode: cards.passcode,
@@ -133,20 +134,12 @@ export async function cardsRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // GET /api/stats
-  fastify.get('/api/stats', {
+  // GET /api/stats?collectionId=X
+  fastify.get<{ Querystring: { collectionId?: string } }>('/api/stats', {
     preHandler: [fastify.authenticate],
   }, async (request, _reply) => {
     const { id: userId } = request.user as { id: number; email: string }
-
-    const totalResult = await db.select({ total: count(cards.id) }).from(cards)
-    const ownedResult = await db
-      .select({ owned: sql<number>`CAST(COUNT(*) AS INTEGER)` })
-      .from(collection)
-      .where(and(eq(collection.owned, true), eq(collection.userId, userId)))
-
-    const total = totalResult[0]?.total ?? 0
-    const owned = ownedResult[0]?.owned ?? 0
+    const collectionId = request.query.collectionId ? parseInt(request.query.collectionId) : null
 
     const setsResult = await db
       .select({
@@ -159,18 +152,39 @@ export async function cardsRoutes(fastify: FastifyInstance) {
       .from(cardSets)
       .leftJoin(cards, eq(cards.setId, cardSets.id))
       .leftJoin(collection, and(eq(collection.cardId, cards.id), eq(collection.userId, userId)))
+      .where(collectionId ? eq(cardSets.collectionId, collectionId) : undefined)
       .groupBy(cardSets.id)
       .orderBy(cardSets.orderIndex)
+
+    const sets = setsResult.map(s => ({
+      ...s,
+      ownedCards: s.ownedCards || 0,
+      percentage: s.totalCards > 0 ? Math.round(((s.ownedCards || 0) / s.totalCards) * 1000) / 10 : 0,
+    }))
+
+    // Direct cards (no set) for this collection
+    const directResult = collectionId
+      ? await db
+          .select({
+            total: count(cards.id),
+            owned: sql<number>`CAST(SUM(CASE WHEN ${collection.owned} = true THEN 1 ELSE 0 END) AS INTEGER)`,
+          })
+          .from(cards)
+          .leftJoin(collection, and(eq(collection.cardId, cards.id), eq(collection.userId, userId)))
+          .where(and(eq(cards.collectionId, collectionId), isNull(cards.setId)))
+      : []
+
+    const directTotal = directResult[0]?.total ?? 0
+    const directOwned = directResult[0]?.owned ?? 0
+
+    const total = sets.reduce((acc, s) => acc + s.totalCards, 0) + directTotal
+    const owned = sets.reduce((acc, s) => acc + s.ownedCards, 0) + (directOwned || 0)
 
     return {
       total_cards: total,
       owned_cards: owned,
       percentage: total > 0 ? Math.round((owned / total) * 1000) / 10 : 0,
-      sets: setsResult.map(s => ({
-        ...s,
-        ownedCards: s.ownedCards || 0,
-        percentage: s.totalCards > 0 ? Math.round(((s.ownedCards || 0) / s.totalCards) * 1000) / 10 : 0,
-      })),
+      sets,
     }
   })
 }

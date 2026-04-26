@@ -4,12 +4,13 @@ import CardCard from './CardCard'
 interface CardGridProps {
   cards: Card[]
   setCode: string
+  collectionId: number
   onUpdateCollection: (data: { cardId: number; owned: boolean; edition: number | null; condition: number | null; isUltimate: boolean }) => void
   onUploadPhoto?: (cardId: number, file: File) => void
   onDeletePhoto?: (cardId: number, photoId: number) => void
 }
 
-export default function CardGrid({ cards, setCode, onUpdateCollection, onUploadPhoto, onDeletePhoto }: CardGridProps) {
+export default function CardGrid({ cards, setCode, collectionId, onUpdateCollection, onUploadPhoto, onDeletePhoto }: CardGridProps) {
   if (cards.length === 0) {
     return (
       <div className="text-center py-16 text-gray-500">
@@ -25,6 +26,7 @@ export default function CardGrid({ cards, setCode, onUpdateCollection, onUploadP
           key={card.id}
           card={card}
           setCode={setCode}
+          collectionId={collectionId}
           onUpdateCollection={onUpdateCollection}
           onUploadPhoto={onUploadPhoto}
           onDeletePhoto={onDeletePhoto}

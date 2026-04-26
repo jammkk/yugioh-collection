@@ -12,7 +12,7 @@ type ConditionFilter = 'all' | '1' | '2'
 const FILTER_LABELS: Record<Filter, string> = { all: 'Todas', owned: 'Tengo', missing: 'Faltan' }
 
 export default function SetView() {
-  const { setCode = '' } = useParams()
+  const { setCode = '', collectionId = '' } = useParams()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [editionFilter, setEditionFilter] = useState<EditionFilter>('all')
@@ -50,7 +50,7 @@ export default function SetView() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3 mb-3">
             <Link
-              to="/"
+              to={`/collections/${collectionId}`}
               className="flex items-center gap-1.5 text-sm font-medium transition-colors shrink-0"
               style={{ color: 'rgba(255,255,255,0.4)' }}
               onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#e8a613'}
@@ -149,6 +149,7 @@ export default function SetView() {
             <CardGrid
               cards={filtered}
               setCode={setCode}
+              collectionId={Number(collectionId)}
               onUpdateCollection={(data) => updateCollection.mutate(data)}
               onUploadPhoto={(cardId, file) => uploadPhoto.mutate({ cardId, file })}
               onDeletePhoto={(cardId, photoId) => deletePhoto.mutate({ cardId, photoId })}

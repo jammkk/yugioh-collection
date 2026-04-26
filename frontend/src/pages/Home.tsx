@@ -1,11 +1,18 @@
-import { useStats } from '../hooks/useCards'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useStats, useCollection, useCollectionAllCards } from '../hooks/useCards'
 import { useAuth } from '../context/AuthContext'
 import SetSelector from '../components/SetSelector'
 import ProgressBar from '../components/ProgressBar'
+import CardCard from '../components/CardCard'
 
 export default function Home() {
+  const { collectionId } = useParams<{ collectionId: string }>()
   const { user, logout } = useAuth()
-  const { data: stats, isLoading, error } = useStats()
+  const { data: stats, isLoading, error } = useStats(Number(collectionId))
+  const { data: collection } = useCollection(Number(collectionId))
+  const isCardsMode = collection?.viewMode === 'cards'
+  const { data: allCards } = useCollectionAllCards(isCardsMode ? Number(collectionId) : 0)
+  const navigate = useNavigate()
 
   if (isLoading) {
     return (
@@ -38,13 +45,22 @@ export default function Home() {
       <header className="sticky top-0 z-20 glass-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between py-4">
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-white">
-                GOAT <span className="text-gold-400">Tracker</span>
-              </h1>
-              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                {user?.name} · LOB → TLM
-              </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/')}
+                className="text-xs px-2 py-1.5 rounded-lg transition-all"
+                style={{ color: 'rgba(255,255,255,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)'}
+              >
+                ← Volver
+              </button>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-white">
+                  {collection?.name ?? <span className="text-gold-400">Tracker</span>}
+                </h1>
+                <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>{user?.name}</p>
+              </div>
             </div>
 
             {stats && (
@@ -53,7 +69,6 @@ export default function Home() {
                   <div className="text-xs font-medium text-gold-400">{stats.owned_cards} cartas</div>
                   <div className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>de {stats.total_cards}</div>
                 </div>
-                {/* Logout */}
                 <button
                   onClick={logout}
                   className="text-xs px-3 py-1.5 rounded-lg transition-all"
@@ -63,7 +78,6 @@ export default function Home() {
                 >
                   Salir
                 </button>
-                {/* Circular progress indicator */}
                 <div className="relative w-11 h-11">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
                     <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
@@ -72,7 +86,7 @@ export default function Home() {
                       stroke="#e8a613" strokeWidth="3"
                       strokeLinecap="round"
                       strokeDasharray={`${2 * Math.PI * 15}`}
-                      strokeDashoffset={`${2 * Math.PI * 15 * (1 - stats.percentage / 100)}`}
+                      strokeDashoffset={`${2 * Math.PI * 15 * (1 - (stats.percentage || 0) / 100)}`}
                       style={{ transition: 'stroke-dashoffset 1s ease' }}
                     />
                   </svg>
@@ -87,41 +101,102 @@ export default function Home() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        {/* Stats row */}
-        {stats && (
-          <div className="grid grid-cols-3 gap-3 mb-8">
-            {[
-              { label: 'Cartas', value: stats.owned_cards, total: stats.total_cards },
-              { label: 'Sets', value: complete, total: 15 },
-              { label: 'Progreso', value: `${stats.percentage}%`, total: null },
-            ].map(s => (
-              <div key={s.label} className="glass rounded-2xl p-4 text-center">
-                <div className="text-lg font-bold text-gold-400">{s.value}</div>
-                {s.total && <div className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>de {s.total}</div>}
-                <div className="text-xs font-medium mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>{s.label}</div>
+        {collection && !collection.configured ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="text-5xl mb-4 opacity-20">&#128218;</div>
+            <div className="text-white font-semibold mb-1">Colección vacía</div>
+            <div className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Esta colección aún no tiene sets configurados
+            </div>
+            <button
+              onClick={() => navigate(`/collections/${collectionId}/configure`)}
+              className="text-sm px-5 py-2.5 rounded-xl font-semibold transition-all"
+              style={{ background: 'linear-gradient(135deg,#f5c842,#e8a613)', color: '#080d1a' }}
+            >
+              Configurar colección
+            </button>
+          </div>
+        ) : (
+          <>
+            {stats && (
+              <div className="grid grid-cols-3 gap-3 mb-8">
+                {[
+                  { label: 'Cartas', value: stats.owned_cards, total: stats.total_cards },
+                  { label: 'Sets', value: complete, total: stats.sets?.length ?? 0 },
+                  { label: 'Progreso', value: `${stats.percentage}%`, total: null },
+                ].map(s => (
+                  <div key={s.label} className="glass rounded-2xl p-4 text-center">
+                    <div className="text-lg font-bold text-gold-400">{s.value}</div>
+                    {s.total ? <div className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>de {s.total}</div> : null}
+                    <div className="text-xs font-medium mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>{s.label}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+
+            {stats && (
+              <div className="mb-8">
+                <ProgressBar owned={stats.owned_cards} total={stats.total_cards} percentage={stats.percentage} />
+              </div>
+            )}
+
+            {isCardsMode ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    CARTAS · {allCards?.length ?? 0}
+                  </h2>
+                </div>
+                {allCards && allCards.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                    {allCards.map(card => (
+                      <CardCard
+                        key={card.id}
+                        card={card}
+                        setCode={card.setCode}
+                        collectionId={Number(collectionId)}
+                        onUpdateCollection={() => {}}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    SETS · {stats?.sets?.length ?? 0}
+                  </h2>
+                  {complete > 0 && (
+                    <span className="text-xs text-gold-400 font-medium">{complete} completo{complete !== 1 ? 's' : ''} ✦</span>
+                  )}
+                </div>
+                {stats?.sets && <SetSelector sets={stats.sets} collectionId={Number(collectionId)} />}
+              </>
+            )}
+
+            <div className="mt-10 flex justify-center gap-3">
+              <button
+                onClick={() => navigate(`/collections/${collectionId}/filter`)}
+                className="text-xs px-4 py-2 rounded-xl transition-all"
+                style={{ color: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.06)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.25)'}
+              >
+                &#128269; Filtros
+              </button>
+              <button
+                onClick={() => navigate(`/collections/${collectionId}/configure`)}
+                className="text-xs px-4 py-2 rounded-xl transition-all"
+                style={{ color: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.06)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.25)'}
+              >
+                &#9881; Configurar
+              </button>
+            </div>
+          </>
         )}
-
-        {/* Progress bar */}
-        {stats && (
-          <div className="mb-8">
-            <ProgressBar owned={stats.owned_cards} total={stats.total_cards} percentage={stats.percentage} />
-          </div>
-        )}
-
-        {/* Sets grid */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
-            SETS · {stats?.sets?.length ?? 0}
-          </h2>
-          {complete > 0 && (
-            <span className="text-xs text-gold-400 font-medium">{complete} completo{complete !== 1 ? 's' : ''} ✦</span>
-          )}
-        </div>
-
-        {stats?.sets && <SetSelector sets={stats.sets} />}
       </main>
     </div>
   )

@@ -32,6 +32,7 @@ export interface CardPhoto {
 export interface Card {
   id: number
   name: string
+  nameEn?: string | null
   cardCode: string
   wikiUrl: string | null
   passcode?: number | null
@@ -49,6 +50,22 @@ export interface CardDetail extends Card {
   notes: string | null
 }
 
+export interface CollectionCard extends Card {
+  setCode: string | null
+}
+
+export interface UserCollection {
+  id: number
+  name: string
+  configured: boolean
+  viewMode: string
+  coverImageUrl: string | null
+  createdAt: string
+  totalCards: number
+  ownedCards: number
+  percentage: number
+}
+
 export interface Stats {
   total_cards: number
   owned_cards: number
@@ -60,6 +77,8 @@ export interface User {
   id: number
   email: string
   name: string
+  konamiId?: string | null
+  duelingbookUsername?: string | null
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -88,12 +107,87 @@ export const api = {
     }),
   logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
   me: () => request<{ user: User }>('/api/auth/me'),
+  updateProfile: (data: { name?: string; konamiId?: string | null; duelingbookUsername?: string | null }) =>
+    request<{ user: User }>('/api/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Collections
+  getCollections: () => request<UserCollection[]>('/api/collections'),
+  getCollection: (id: number) => request<UserCollection>(`/api/collections/${id}`),
+  getCollectionAllCards: (id: number) => request<CollectionCard[]>(`/api/collections/${id}/all-cards`),
+  updateCollectionSettings: (id: number, data: { viewMode?: string }) =>
+    request<{ ok: boolean }>(`/api/collections/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  createCollection: (name: string) => request<UserCollection>('/api/collections', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  }),
+  uploadCollectionCover: async (id: number, file: File): Promise<{ coverImageUrl: string }> => {
+    const token = getToken()
+    const formData = new FormData()
+    formData.append('cover', file)
+    const res = await fetch(`${BASE_URL}/api/collections/${id}/cover`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return res.json()
+  },
+  deleteCollection: async (id: number, password: string): Promise<void> => {
+    const token = getToken()
+    const res = await fetch(`${BASE_URL}/api/collections/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ password }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw Object.assign(new Error(body.error || `HTTP ${res.status}`), { status: res.status })
+    }
+  },
 
   // Collection
   getCard: (cardId: number) => request<CardDetail>(`/api/cards/${cardId}`),
-  getSets: () => request<CardSet[]>('/api/sets'),
+  getSets: (collectionId?: number) => request<CardSet[]>(`/api/sets${collectionId ? `?collectionId=${collectionId}` : ''}`),
   getSetCards: (setCode: string) => request<Card[]>(`/api/sets/${setCode}/cards`),
-  getStats: () => request<Stats>('/api/stats'),
+  getStats: (collectionId?: number) => request<Stats>(`/api/stats${collectionId ? `?collectionId=${collectionId}` : ''}`),
+  importExcel: async (collectionId: number, file: File): Promise<{ imported: number; notFound: string[] }> => {
+    const token = getToken()
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch(`${BASE_URL}/api/collections/${collectionId}/import-excel`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body.error || `HTTP ${res.status}`)
+    }
+    return res.json()
+  },
+  addCard: (collectionId: number, data: { name: string; passcode: number; cardCode?: string; setCode?: string; setName?: string }) =>
+    request(`/api/collections/${collectionId}/cards`, { method: 'POST', body: JSON.stringify(data) }),
+  removeCardFromCollection: (collectionId: number, cardId: number) =>
+    request<{ ok: boolean }>(`/api/collections/${collectionId}/cards/${cardId}`, { method: 'DELETE' }),
+  removeSetFromCollection: (collectionId: number, setCode: string) =>
+    request<{ ok: boolean }>(`/api/collections/${collectionId}/sets/${setCode}`, { method: 'DELETE' }),
+  downloadSampleExcel: () => {
+    const token = getToken()
+    const link = document.createElement('a')
+    link.href = `${BASE_URL}/api/collections/sample-excel`
+    // fetch with auth header, trigger download
+    fetch(`${BASE_URL}/api/collections/sample-excel`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).then(res => res.blob()).then(blob => {
+      link.href = URL.createObjectURL(blob)
+      link.download = 'coleccion_ejemplo.xlsx'
+      link.click()
+      URL.revokeObjectURL(link.href)
+    })
+  },
   searchCards: (q: string) => request<Card[]>(`/api/cards/search?q=${encodeURIComponent(q)}`),
   updateCollection: (cardId: number, data: Partial<Pick<Card, 'owned' | 'edition' | 'condition' | 'isUltimate' | 'language'>> & { notes?: string | null }) =>
     request(`/api/cards/${cardId}/collection`, {

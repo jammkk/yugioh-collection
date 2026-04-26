@@ -9,11 +9,12 @@ export async function setsRoutes(fastify: FastifyInstance) {
   const client = postgres(connectionString)
   const db = drizzle(client)
 
-  // GET /api/sets
-  fastify.get('/api/sets', {
+  // GET /api/sets?collectionId=X
+  fastify.get<{ Querystring: { collectionId?: string } }>('/api/sets', {
     preHandler: [fastify.authenticate],
   }, async (request, _reply) => {
     const { id: userId } = request.user as { id: number; email: string }
+    const collectionId = request.query.collectionId ? parseInt(request.query.collectionId) : null
 
     const result = await db
       .select({
@@ -27,6 +28,7 @@ export async function setsRoutes(fastify: FastifyInstance) {
       .from(cardSets)
       .leftJoin(cards, eq(cards.setId, cardSets.id))
       .leftJoin(collection, and(eq(collection.cardId, cards.id), eq(collection.userId, userId)))
+      .where(collectionId ? eq(cardSets.collectionId, collectionId) : undefined)
       .groupBy(cardSets.id)
       .orderBy(cardSets.orderIndex)
 
@@ -58,6 +60,7 @@ export async function setsRoutes(fastify: FastifyInstance) {
       .select({
         id: cards.id,
         name: cards.name,
+        nameEn: cards.nameEn,
         cardCode: cards.cardCode,
         wikiUrl: cards.wikiUrl,
         passcode: cards.passcode,

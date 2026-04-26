@@ -1,6 +1,60 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 
+export function useCollections() {
+  return useQuery({
+    queryKey: ['collections'],
+    queryFn: api.getCollections,
+  })
+}
+
+export function useCollection(id: number) {
+  return useQuery({
+    queryKey: ['collections', id],
+    queryFn: () => api.getCollection(id),
+    enabled: !!id,
+  })
+}
+
+export function useCollectionAllCards(id: number) {
+  return useQuery({
+    queryKey: ['collections', id, 'all-cards'],
+    queryFn: () => api.getCollectionAllCards(id),
+    enabled: !!id,
+  })
+}
+
+export function useCreateCollection() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => api.createCollection(name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
+    },
+  })
+}
+
+export function useDeleteCollection() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, password }: { id: number; password: string }) => api.deleteCollection(id, password),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
+    },
+  })
+}
+
+export function useUploadCollectionCover(collectionId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (file: File) => api.uploadCollectionCover(collectionId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
+      queryClient.invalidateQueries({ queryKey: ['collections', collectionId] })
+    },
+  })
+}
+
 export function useCardDetail(cardId: number) {
   return useQuery({
     queryKey: ['cards', cardId],
@@ -10,10 +64,10 @@ export function useCardDetail(cardId: number) {
 }
 
 
-export function useSets() {
+export function useSets(collectionId?: number) {
   return useQuery({
-    queryKey: ['sets'],
-    queryFn: api.getSets,
+    queryKey: ['sets', collectionId],
+    queryFn: () => api.getSets(collectionId),
   })
 }
 
@@ -25,10 +79,10 @@ export function useSetCards(setCode: string) {
   })
 }
 
-export function useStats() {
+export function useStats(collectionId?: number) {
   return useQuery({
-    queryKey: ['stats'],
-    queryFn: api.getStats,
+    queryKey: ['stats', collectionId],
+    queryFn: () => api.getStats(collectionId),
   })
 }
 
@@ -45,6 +99,7 @@ export function useUpdateCollection(setCode: string) {
       queryClient.invalidateQueries({ queryKey: ['sets', setCode, 'cards'] })
       queryClient.invalidateQueries({ queryKey: ['sets'] })
       queryClient.invalidateQueries({ queryKey: ['stats'] })
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
     },
   })
 }
@@ -94,6 +149,31 @@ export function useUploadPhotoForCard(cardId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cards', cardId] })
       queryClient.invalidateQueries({ queryKey: ['sets'] })
+    },
+  })
+}
+
+export function useRemoveCardFromCollection(collectionId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (cardId: number) => api.removeCardFromCollection(collectionId, cardId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sets'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
+      queryClient.invalidateQueries({ queryKey: ['collections', collectionId, 'all-cards'] })
+    },
+  })
+}
+
+export function useRemoveSetFromCollection(collectionId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (setCode: string) => api.removeSetFromCollection(collectionId, setCode),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sets'] })
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
     },
   })
 }
